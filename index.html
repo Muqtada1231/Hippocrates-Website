@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HIPPOCRATES — Medical Education Platform for Students</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="hip-root" id="root" dir="rtl">
+
+  <header class="hip-header" id="header">
+    <div class="hip-header-bar" data-navbar>
+      <div class="hip-brand">
+        <img src="assets/hippocrates-logo.png" alt="HIPPOCRATES">
+        <div class="hip-brand-text">
+          <span class="hip-brand-name" data-nav-word>HIPPOCRATES</span>
+          <span class="hip-brand-url mono" data-nav-sub>med-hip.com</span>
+        </div>
+      </div>
+
+      <div class="hip-lang">
+        <span class="hip-lang-pill" aria-hidden="true"></span>
+        <button type="button" id="btn-ar" class="active">ع</button>
+        <button type="button" id="btn-en">EN</button>
+      </div>
+
+      <a href="lecturers.html" class="btn btn-nav" data-i18n="lecturers" data-nav-lect>المحاضرون</a>
+
+      <a href="cart.html" class="btn btn-cart" aria-label="السلة">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.2l2.3 11.2h9.9l2.1-7.9H6.4"></path><circle cx="9.4" cy="19.2" r="1.5"></circle><circle cx="16.6" cy="19.2" r="1.5"></circle></svg>
+        <span data-nav-cartlabel data-i18n="cart">السلة</span>
+        <span class="hip-cart-badge" id="cart-badge" hidden>0</span>
+      </a>
+
+      <a href="#app" class="btn btn-nav" data-nav-app data-i18n="navApp">حمّل التطبيق</a>
+
+      <div class="hip-follow-wrap" data-nav-follow id="follow-wrap">
+        <button type="button" class="btn hip-follow-toggle" id="follow-toggle" aria-expanded="false">
+          <span data-i18n="followTitle">تابعنا</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.65"><path d="M6 9l6 6 6-6"></path></svg>
+        </button>
+        <div class="hip-follow-menu" id="follow-menu" hidden>
+          <a href="https://t.me/Hippoocrates" target="_blank" rel="noopener" class="hip-follow-menu-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0E7490" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4.5 2.9 11.4c-.8.3-.8 1.4 0 1.7l4.3 1.4 1.6 4.9c.2.7 1.1.9 1.6.3l2.2-2.6 4.4 3.2c.6.5 1.5.1 1.7-.6L21.9 5.6c.2-.8-.5-1.4-1.2-1.1Z"></path></svg>
+            <span class="hip-follow-menu-text"><span class="name" data-i18n="tgName">قناة التليكرام</span><span class="handle mono">@Hippoocrates</span></span>
+          </a>
+          <a href="https://www.instagram.com/hippocrates.34" target="_blank" rel="noopener" class="hip-follow-menu-item">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B08D57" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5.4"></rect><circle cx="12" cy="12" r="4.1"></circle><circle cx="17.3" cy="6.7" r="1.1" fill="#B08D57" stroke="none"></circle></svg>
+            <span class="hip-follow-menu-text"><span class="name" data-i18n="igName">حساب الانستغرام</span><span class="handle mono">@hippocrates.34</span></span>
+          </a>
+        </div>
+      </div>
+
+      <a href="https://t.me/Hippocrates_Support" target="_blank" rel="noopener" class="btn btn-nav" data-nav-contact aria-label="تواصل معنا" title="تواصل معنا">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.7L3.5 21l1.8-5.2A8.5 8.5 0 1 1 21 11.5Z"></path></svg>
+        <span data-contact-label data-i18n="contact">تواصل معنا</span>
+      </a>
+
+      <a href="#stages" class="btn btn-register" data-i18n="register">سجّل الآن</a>
+    </div>
+  </header>
+
+  <div class="hip-hero">
+    <img class="hip-hero-logo" src="assets/hippocrates-logo.png" alt="">
+
+    <div class="ar-only">
+      <div class="hip-hero-kicker">منصة تعليمية طبية&nbsp;</div>
+      <h1>Medical Education<br>Platform for Students.</h1>
+      <p>ابوقراط توفّر لطالب الطب في العراق كورسات طبية منظّمة حسب المرحلة، ملازم وملخصات معتمدة، بنك أسئلة <span class="qbank">QBank</span>، ومراجعات امتحانية — كل شيء بمسار واحد واضح من أول يوم دراسي إلى يوم الامتحان.</p>
+      <div class="hip-hero-cta">
+        <a href="#stages" class="btn btn-primary">استكشف الكورسات<span class="btn-arrow">←</span></a>
+        <a href="#packages" class="btn btn-outline">شاهد الباقات</a>
+      </div>
+      <div class="hip-hero-tagline">
+        <span class="rule"></span>
+        <span><span class="sans" style="letter-spacing:.08em">HIPPOCRATES</span> — وياك من البداية ليوم الامتحان</span>
+        <span class="rule"></span>
+      </div>
+    </div>
+
+    <div class="en-only">
+      <div class="hip-hero-kicker sans">Medical learning platform&nbsp;</div>
+      <h1>Medical Education<br>Platform for Students.</h1>
+      <p class="sans">Structured medical courses for every stage, curated notes, a full <span class="qbank">QBank</span>, and exam-ready reviews — one clear path for Iraqi medical students, from day one to exam day.</p>
+      <div class="hip-hero-cta">
+        <a href="#stages" class="btn btn-primary sans">Explore Courses<span class="btn-arrow">→</span></a>
+        <a href="#packages" class="btn btn-outline sans">View Packages</a>
+      </div>
+      <div class="hip-hero-tagline sans">
+        <span class="rule"></span>
+        <span>HIPPOCRATES — with you from day one to exam day</span>
+        <span class="rule"></span>
+      </div>
+    </div>
+
+    <div class="hip-stats">
+      <div class="hip-stat"><div class="hip-stat-num mono" id="stat-stages">06</div><div class="hip-stat-label" data-i18n="s1">مراحل دراسية</div></div>
+      <div class="hip-stat-sep"></div>
+      <div class="hip-stat"><div class="hip-stat-num mono" id="stat-courses">19</div><div class="hip-stat-label" data-i18n="s2">كورس متاح</div></div>
+      <div class="hip-stat-sep"></div>
+      <div class="hip-stat"><div class="hip-stat-num mono" id="stat-lecturers">13</div><div class="hip-stat-label" data-i18n="s3">محاضر</div></div>
+    </div>
+  </div>
+
+  <section class="hip-orbit-section" data-reveal data-orbit-section>
+    <div class="hip-orbit-grid">
+      <div>
+        <div class="hip-orbit-kicker" data-inner data-i18n="orbitKicker">منظومة ابوقراط</div>
+        <h2 class="hip-orbit-title" data-inner data-i18n="orbitTitle">كل اللي تحتاجه بمكان واحد</h2>
+        <p class="hip-orbit-sub" data-inner data-i18n="orbitSub">من الشرح إلى المراجعة وبنك الأسئلة — كل أدوات دراستك مرتبة ضمن مسار واحد.</p>
+      </div>
+      <div class="hip-orbit" id="orbit">
+        <svg class="track" aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <ellipse cx="50" cy="50" rx="37" ry="30" fill="none" stroke="#002C5C" stroke-opacity=".13" stroke-width="1.4" vector-effect="non-scaling-stroke"></ellipse>
+          <ellipse cx="50" cy="50" rx="23" ry="18.5" fill="none" stroke="#0E7490" stroke-opacity=".18" stroke-width="1" stroke-dasharray="3 5" vector-effect="non-scaling-stroke"></ellipse>
+        </svg>
+
+        <div class="hip-node dark" data-i="0">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"></rect><path d="M9 3.2h6" stroke-width="2"></path><path data-anim d="M9.6 11.2c0-1.3 1-2.2 2.4-2.2s2.3.9 2.3 2c0 1.5-2.3 1.6-2.3 3.1"></path><path d="M12 17.4h.01" stroke-width="2"></path></svg>
+          <span class="hip-node-label" data-i18n="o1">بنك أسئلة</span>
+        </div>
+        <div class="hip-node light" data-i="1">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"></rect><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"></path><path data-anim d="M8.8 14.6l2.3 2.3 4-4.3"></path></svg>
+          <span class="hip-node-label" data-i18n="o2">مراجعة امتحانية</span>
+        </div>
+        <div class="hip-node dark" data-i="2">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.2v13"></path><path d="M12 6.2C10.4 4.9 8.2 4.4 4.5 4.6v12.6c3.6-.2 6 .3 7.5 1.6"></path><path data-anim d="M12 6.2c1.6-1.3 3.8-1.8 7.5-1.6v12.6c-3.6-.2-6 .3-7.5 1.6"></path></svg>
+          <span class="hip-node-label" data-i18n="o3">شرح تفصيلي</span>
+        </div>
+        <div class="hip-node dark" data-i="3">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path data-anim d="M12 3.4l8 4-8 4-8-4 8-4Z"></path><path d="M4 11.5l8 4 8-4M4 16l8 4 8-4"></path></svg>
+          <span class="hip-node-label" data-i18n="o5">كورسات منظمة</span>
+        </div>
+        <div class="hip-node light" data-i="4">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.4h9L19 7.4v13.2H6z"></path><path d="M14.6 3.6v4h4.2"></path><path data-anim d="M9 12.4h7M9 16h4.6"></path></svg>
+          <span class="hip-node-label" data-i18n="o6">ملازم وملخصات</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="hip-ecg" aria-hidden="true" data-ecg>
+    <svg data-svg preserveAspectRatio="none" viewBox="0 0 900 68">
+      <path data-base fill="none" stroke="#0E7490" stroke-opacity=".16" stroke-width="1.3" stroke-linecap="round"></path>
+      <path data-line fill="none" stroke="#0E7490" stroke-opacity=".85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+      <circle data-dot cx="0" cy="42" r="3" fill="#B08D57" opacity="0"></circle>
+    </svg>
+  </div>
+
+  <section id="stages" class="hip-section">
+    <div class="hip-section-head">
+      <span class="hip-section-num mono">01</span>
+      <h2 data-i18n="chooseStage">اختر مرحلتك</h2>
+      <span class="hip-section-tag">Choose Your Stage</span>
+    </div>
+    <p class="hip-section-hint" data-i18n="chooseHint">اختر مرحلتك الدراسية وتظهر لك كورسات هذه المرحلة فقط — بدون بحث ولا لبس بأي كورس يخصك.</p>
+
+    <div class="hip-stage-grid" id="stage-grid" data-reveal></div>
+
+    <div class="hip-filter-row">
+      <div class="hip-chips" id="filter-chips"></div>
+      <a href="#packages" class="hip-pkg-link" data-i18n="fPackages">الباقات</a>
+    </div>
+
+    <div class="hip-active-row" id="courses">
+      <h3 id="active-heading" tabindex="-1" style="outline:none"></h3>
+      <span class="hip-active-count" id="active-count"></span>
+      <button type="button" class="hip-clear-btn" id="btn-clear" data-i18n="showAll">اعرض كل المراحل</button>
+    </div>
+
+    <div class="hip-course-grid" id="course-grid" data-reveal></div>
+
+    <div class="hip-empty-state" id="empty-state" hidden></div>
+  </section>
+
+  <section id="packages" class="hip-section" style="padding-top:0" data-reveal>
+    <div class="hip-section-head">
+      <span class="hip-section-num mono">02</span>
+      <h2 data-i18n="pkgTitle">وفّر أكثر مع الباقات</h2>
+      <span class="hip-section-tag">Course Packages</span>
+    </div>
+    <p class="hip-section-hint" data-i18n="pkgSub">الباقة تجمع كورسات مرحلتك بسعر أقل من شرائها منفصلة</p>
+
+    <div class="hip-pkg-featured-grid" id="pkg-featured" data-reveal></div>
+    <div class="hip-pkg-compact-grid" id="pkg-compact" data-reveal></div>
+  </section>
+
+  <section class="hip-section" style="padding-top:0" data-reveal>
+    <div class="hip-lect-panel">
+      <div class="hip-section-head" style="margin-bottom:6px">
+        <span class="hip-section-num mono">03</span>
+        <h2 style="font-size:clamp(21px,3.2vw,28px)" data-i18n="lecturersTitle">المحاضرون</h2>
+        <span class="hip-section-tag">Our Lecturers</span>
+      </div>
+      <p class="hip-section-hint" style="font-size:14.5px;margin-bottom:24px" data-i18n="lecturersHint">كل مادة عندها محاضر مسؤول عنها — طبيب متخرّج بمعدل متميز وله خبرة فعلية بالشرح والتلخيص. شوف ملفه التعريفي قبل ما تسجّل.</p>
+
+      <div class="hip-lect-grid" id="lect-grid" data-reveal></div>
+
+      <div class="hip-lect-foot">
+        <a href="lecturers.html" class="btn btn-register hip-lect-cta" data-i18n="lecturersCta">شوف كل المحاضرين وملفاتهم<span class="btn-arrow" id="lect-cta-arrow">←</span></a>
+        <span class="hip-lect-note" data-i18n="lecturersNote">13 محاضر · 21 كورس طبي</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="hip-section" style="padding-top:0" data-reveal>
+    <div class="hip-section-head" style="margin-bottom:6px">
+      <span class="hip-section-num mono">04</span>
+      <h2 style="font-size:clamp(21px,3.2vw,28px)" data-i18n="followTitle">تابعنا</h2>
+      <span class="hip-section-tag">Telegram · Instagram</span>
+    </div>
+    <p class="hip-section-hint" style="font-size:14.5px;margin-bottom:22px" data-i18n="followSub">كل الكورسات الجديدة والعروض تنشر أول شي على قناة التليكرام وحساب الانستغرام.</p>
+
+    <div class="hip-follow-grid">
+      <a href="https://t.me/Hippoocrates" target="_blank" rel="noopener" class="btn hip-follow-card follow-tg">
+        <span class="hip-follow-icon dark">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#DCE9F2" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4.5 2.9 11.4c-.8.3-.8 1.4 0 1.7l4.3 1.4 1.6 4.9c.2.7 1.1.9 1.6.3l2.2-2.6 4.4 3.2c.6.5 1.5.1 1.7-.6L21.9 5.6c.2-.8-.5-1.4-1.2-1.1Z"></path><path d="M7.5 14.6 18.6 6.9l-8.4 8.4-.3 3.6"></path></svg>
+        </span>
+        <span class="hip-follow-text">
+          <span class="hip-follow-name" data-i18n="tgName">قناة التليكرام</span>
+          <span class="hip-follow-handle mono">@Hippoocrates</span>
+        </span>
+        <span class="hip-follow-cta" data-i18n="joinNow">انضم للقناة<span class="btn-arrow">←</span></span>
+      </a>
+      <a href="https://www.instagram.com/hippocrates.34" target="_blank" rel="noopener" class="btn hip-follow-card follow-ig">
+        <span class="hip-follow-icon light">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0E7490" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5"></rect><circle cx="12" cy="12" r="4.1"></circle><circle cx="17.1" cy="6.9" r="1.15" fill="#0E7490" stroke="none"></circle></svg>
+        </span>
+        <span class="hip-follow-text">
+          <span class="hip-follow-name" data-i18n="igName">حساب الانستغرام</span>
+          <span class="hip-follow-handle mono">@hippocrates.34</span>
+        </span>
+        <span class="hip-follow-cta ig" data-i18n="followNow">تابع الحساب<span class="btn-arrow">←</span></span>
+      </a>
+      <a href="https://t.me/Hippocrates_Support" target="_blank" rel="noopener" class="btn hip-follow-card follow-contact">
+        <span class="hip-follow-icon contact">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#B08D57" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.7L3.5 21l1.8-5.2A8.5 8.5 0 1 1 21 11.5Z"></path></svg>
+        </span>
+        <span class="hip-follow-text">
+          <span class="hip-follow-name" data-i18n="contact">تواصل معنا</span>
+          <span class="hip-follow-handle mono">@Hippocrates_Support</span>
+        </span>
+        <span class="hip-follow-cta contact" data-i18n="contactCta">راسل الدعم<span class="btn-arrow">←</span></span>
+      </a>
+    </div>
+  </section>
+
+  <section id="app" class="hip-section" style="padding-top:0" data-reveal>
+    <div class="hip-section-head" style="margin-bottom:6px">
+      <span class="hip-section-num mono">05</span>
+      <h2 style="font-size:clamp(21px,3.2vw,28px)" data-i18n="appTitle">حمّل التطبيق</h2>
+      <span class="hip-section-tag">iOS · Android</span>
+    </div>
+    <p class="hip-section-hint" style="font-size:14.5px;margin-bottom:22px" data-i18n="appSub">كل كورساتك ومحتواك الدراسي بمكان واحد — تابع دروسك وملازمك من الموبايل بأي وقت.</p>
+
+    <div class="hip-app-grid">
+      <a href="https://apps.apple.com/us/app/medgptx/id6757318496" target="_blank" rel="noopener noreferrer" class="btn hip-app-card dark" aria-label="حمّل تطبيق ابوقراط من App Store">
+        <span class="hip-app-icon dark">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="#DCE9F2" aria-hidden="true"><path d="M16.36 12.63c-.02-2.2 1.8-3.26 1.88-3.31-1.02-1.5-2.62-1.7-3.19-1.72-1.36-.14-2.65.8-3.34.8-.69 0-1.75-.78-2.87-.76-1.48.02-2.84.86-3.6 2.18-1.53 2.66-.39 6.6 1.1 8.76.73 1.06 1.6 2.25 2.74 2.2 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.7.71 2.87.69 1.18-.02 1.93-1.08 2.65-2.14.84-1.23 1.18-2.42 1.2-2.48-.03-.01-2.28-.88-2.3-3.5ZM14.2 6.1c.6-.74 1.01-1.76.9-2.78-.87.04-1.93.58-2.56 1.31-.56.65-1.06 1.7-.93 2.7.97.07 1.97-.49 2.59-1.23Z"></path></svg>
+        </span>
+        <span class="hip-app-text">
+          <span class="hip-app-small" data-i18n="appStoreSmall">حمّل من</span>
+          <span class="hip-app-name sans">App Store</span>
+        </span>
+        <span class="btn-arrow" style="margin-inline-start:auto;color:#9fc3dd">←</span>
+      </a>
+      <a href="https://play.google.com/store/apps/details?id=com.medgptx.projects" target="_blank" rel="noopener noreferrer" class="btn hip-app-card light" aria-label="احصل على تطبيق ابوقراط من Google Play">
+        <span class="hip-app-icon light">
+          <svg width="27" height="27" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 2.4c-.3.25-.48.65-.48 1.17v16.86c0 .52.18.92.48 1.17l9-9.6-9-9.6Z" fill="#4285F4"></path><path d="m15.7 8.7-3.1-3.31L4.3 2.06c-.3-.12-.56-.13-.7.34l9 9.6 3.1-3.3Z" fill="#34A853"></path><path d="m15.7 15.3-3.1-3.3-9 9.6c.14.47.4.46.7.34l8.3-3.33 3.1-3.31Z" fill="#EA4335"></path><path d="m15.7 8.7-3.1 3.3 3.1 3.3 3.83-1.54c.86-.35.86-2.17 0-2.52L15.7 8.7Z" fill="#FBBC04"></path></svg>
+        </span>
+        <span class="hip-app-text">
+          <span class="hip-app-small" data-i18n="playSmall">احصل عليه من</span>
+          <span class="hip-app-name sans">Google Play</span>
+        </span>
+        <span class="btn-arrow" style="margin-inline-start:auto;color:#0E7490">←</span>
+      </a>
+    </div>
+  </section>
+
+</div>
+
+<div class="hip-modal-overlay hidden" id="pkg-modal-overlay">
+  <div class="hip-pkg-modal" id="pkg-modal-sheet" role="dialog" aria-modal="true">
+    <div class="hip-pkg-modal-head">
+      <div>
+        <div class="hip-pkg-modal-kicker" data-i18n="pkgKicker">وفّر أكثر</div>
+        <h3 class="hip-pkg-modal-title" id="pm-name"></h3>
+      </div>
+      <button type="button" class="hip-modal-close-round" id="pm-close" aria-label="إغلاق">×</button>
+    </div>
+    <div class="hip-pkg-modal-label" data-i18n="includedCourses">الكورسات المشمولة</div>
+    <div class="hip-pkg-modal-rows" id="pm-rows"></div>
+    <div class="hip-pkg-modal-price-box">
+      <div class="hip-pkg-modal-price-row">
+        <span data-i18n="individualValue">القيمة الإفرادية</span>
+        <span class="hip-pkg-modal-strike mono" id="pm-original"></span>
+      </div>
+      <div class="hip-pkg-modal-price-row border">
+        <span data-i18n="packagePrice">سعر الباقة</span>
+        <span class="hip-pkg-modal-price mono" id="pm-price"></span>
+      </div>
+      <div class="hip-pkg-modal-save-row">
+        <span data-i18n="youSave">توفيرك</span>
+        <span class="mono" id="pm-save"></span>
+        <span class="hip-pkg-off-pill" id="pm-pct"></span>
+      </div>
+    </div>
+    <button type="button" class="btn hip-pkg-modal-cta" id="pm-add"></button>
+  </div>
+</div>
+
+<div class="hip-modal-overlay hidden" id="warn-modal-overlay">
+  <div class="hip-warn-modal" id="warn-modal-sheet" role="dialog" aria-modal="true">
+    <div class="hip-warn-head">
+      <span class="hip-warn-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B08D57" stroke-width="1.9" stroke-linecap="round"><path d="M12 8v5"></path><path d="M12 16.4h.01"></path><circle cx="12" cy="12" r="8.4"></circle></svg>
+      </span>
+      <h3 data-i18n="dupTitle">محتوى مكرر</h3>
+    </div>
+    <p id="warn-body"></p>
+    <ul id="warn-rows"></ul>
+    <div class="hip-warn-actions">
+      <button type="button" class="btn hip-warn-clean" id="warn-clean"></button>
+      <button type="button" class="hip-warn-both" id="warn-both" data-i18n="dupBoth">أضف الاثنين</button>
+    </div>
+  </div>
+</div>
+
+<div class="hip-toast" id="toast" hidden>
+  <span id="toast-text"></span>
+  <a href="cart.html" class="hip-toast-cta" data-i18n="viewCart">شوف السلة<span class="btn-arrow">←</span></a>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ecg.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

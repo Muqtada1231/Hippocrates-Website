@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>المحاضرون — HIPPOCRATES</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="hip-root lect-page" id="root" dir="rtl">
+
+  <header class="hip-header" id="header">
+    <div class="hip-header-bar">
+      <a href="index.html" class="hip-brand-link">
+        <img src="assets/hippocrates-logo.png" alt="HIPPOCRATES" width="42" height="42" style="object-fit:contain;object-position:top">
+        <span class="hip-brand-text">
+          <span class="hip-brand-name">HIPPOCRATES</span>
+          <span class="hip-brand-url mono">med-hip.com</span>
+        </span>
+      </a>
+      <a href="index.html" class="btn btn-nav">الكورسات والمراحل</a>
+      <a href="https://t.me/hippocrates_Support" target="_blank" rel="noopener" class="btn btn-register">سجّل الآن</a>
+    </div>
+  </header>
+
+  <section class="hip-lect-hero">
+    <div class="hip-lect-hero-inner">
+      <div class="hip-lect-hero-kicker">هيئة التدريس · Hippocrates</div>
+      <h1>تعرّف على المحاضرين الي راح يشرحون لك</h1>
+      <p>كل محاضر في ابوقراط طبيب متخرّج بمعدل متميز وله خبرة فعلية بالشرح وتلخيص المادة. اختر المادة الي تدرسها وشوف منو المسؤول عن شرحها، وشوف ملفه التعريفي كامل قبل ما تسجّل.</p>
+      <div class="hip-lect-stats">
+        <div><div class="hip-stat-num" id="stat-lecturers">09</div><div class="hip-stat-label">محاضر</div></div>
+        <div><div class="hip-stat-num" id="stat-subjects">12</div><div class="hip-stat-label">مادة طبية</div></div>
+        <div><div class="hip-stat-num">300+</div><div class="hip-stat-label">محاضرة مسجّلة</div></div>
+      </div>
+    </div>
+    <div class="hip-ecg" aria-hidden="true" data-ecg>
+      <svg data-svg preserveAspectRatio="none" viewBox="0 0 900 68">
+        <path data-base fill="none" stroke="#0E7490" stroke-opacity=".16" stroke-width="1.3" stroke-linecap="round"></path>
+        <path data-line fill="none" stroke="#0E7490" stroke-opacity=".85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+        <circle data-dot cx="0" cy="42" r="3" fill="#B08D57" opacity="0"></circle>
+      </svg>
+    </div>
+  </section>
+
+  <section id="lecturers" class="hip-section" style="padding-top:clamp(20px,3vw,32px)">
+    <div class="hip-section-head" style="margin-bottom:18px">
+      <span class="hip-section-num mono">02</span>
+      <h2 style="font-size:clamp(22px,3.4vw,30px)">المحاضرون</h2>
+      <span class="hip-section-tag">Our Lecturers</span>
+    </div>
+
+    <div class="hip-chips" id="chips"></div>
+
+    <div class="hip-people-grid" id="people-grid" data-reveal></div>
+
+    <p class="hip-empty-note" id="empty-note" hidden>ما في محاضر لهذه المادة حالياً — اختر مادة ثانية.</p>
+  </section>
+
+</div>
+
+<div class="hip-modal-overlay hidden" id="modal-overlay">
+  <div class="hip-modal-sheet" id="modal-sheet" role="dialog" aria-modal="true">
+    <div class="hip-modal-head">
+      <span class="hip-modal-head-title">الملف التعريفي</span>
+      <span class="hip-modal-head-rule"></span>
+      <button type="button" class="hip-modal-close" id="modal-close" aria-label="إغلاق">×</button>
+    </div>
+    <div class="hip-modal-body">
+      <div class="hip-modal-grid">
+        <div>
+          <div class="hip-modal-photo-card">
+            <img id="modal-photo" src="" alt="">
+          </div>
+          <div class="hip-modal-gpa-row">
+            <span>المعدل التراكمي</span>
+            <span class="hip-modal-gpa-val mono" id="modal-gpa"></span>
+          </div>
+        </div>
+        <div>
+          <h3 class="hip-modal-name" id="modal-name"></h3>
+          <div class="hip-modal-name-en" id="modal-name-en"></div>
+          <div class="hip-modal-role" id="modal-role"></div>
+
+          <div class="hip-modal-bio-label">نبذة مختصرة</div>
+          <ul class="hip-modal-bio-list" id="modal-bio"></ul>
+
+          <div class="hip-modal-subjects-label">المواد المسؤول عنها في المنصة</div>
+          <div class="hip-modal-subjects" id="modal-subjects"></div>
+
+          <a href="index.html" class="btn hip-modal-cta">شوف كورسات المحاضر<span class="btn-arrow">←</span></a>
+        </div>
+      </div>
+      <div class="hip-modal-foot">
+        <span class="hip-modal-brand">HIPPOCRATES</span>
+        <span class="hip-modal-tag">وياك من البداية ليوم الامتحان</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/ecg.js"></script>
+<script src="js/lecturers.js"></script>
+</body>
+</html>

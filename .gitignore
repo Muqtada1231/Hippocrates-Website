@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# محرّرات
+.vscode/
+.idea/
+*.swp
+
+# مؤقتات
+*.log
+.cache/

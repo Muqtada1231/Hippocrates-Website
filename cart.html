@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>السلة — HIPPOCRATES</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="hip-root" id="root" dir="rtl">
+
+  <header class="hip-header cart-header" id="header">
+    <div class="hip-header-bar" data-navbar>
+      <a href="index.html" class="hip-brand-link">
+        <img src="assets/hippocrates-logo.png" alt="HIPPOCRATES" width="40" height="40" style="object-fit:contain;object-position:top">
+        <span class="hip-brand-text">
+          <span class="hip-brand-name" data-nav-word>HIPPOCRATES</span>
+          <span class="hip-brand-url mono" data-nav-sub>med-hip.com</span>
+        </span>
+      </a>
+      <div class="hip-lang">
+        <span class="hip-lang-pill" aria-hidden="true"></span>
+        <button type="button" id="btn-ar" class="active">ع</button>
+        <button type="button" id="btn-en">EN</button>
+      </div>
+      <a href="index.html" class="btn btn-nav" id="continue-shopping"><span class="btn-arrow" id="cs-arrow">←</span><span id="cs-text">واصل التسوّق</span></a>
+    </div>
+  </header>
+
+  <main class="hip-cart-main">
+
+    <div class="hip-steps-row" id="steps-row"></div>
+
+    <!-- STEP: CART -->
+    <section id="step-cart">
+      <h1 class="hip-page-title" id="cart-title">سلة الطلب</h1>
+      <p class="hip-page-sub" id="cart-sub"></p>
+
+      <div class="hip-cart-empty" id="cart-empty" hidden>
+        <span class="hip-cart-empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0E7490" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.2l2.3 11.2h9.9l2.1-7.9H6.4"></path><circle cx="9.4" cy="19.2" r="1.5"></circle><circle cx="16.6" cy="19.2" r="1.5"></circle></svg>
+        </span>
+        <h2 id="empty-title">سلتك فارغة</h2>
+        <p id="empty-sub">اختر كورساتك أو باقة مرحلتك وتظهر هنا.</p>
+        <a href="index.html" class="btn btn-primary" id="empty-browse">تصفّح الكورسات<span class="btn-arrow">←</span></a>
+      </div>
+
+      <div class="hip-2col" id="cart-body" hidden>
+        <div class="hip-cart-lines-col">
+          <div class="hip-upsell-banner" id="upsell-banner" hidden>
+            <span class="hip-upsell-icon">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0E7490" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4l8 4-8 4-8-4 8-4Z"></path><path d="M4 11.5l8 4 8-4M4 16l8 4 8-4"></path></svg>
+            </span>
+            <span class="hip-upsell-text" id="upsell-text"></span>
+            <button type="button" class="hip-upsell-cta" id="upsell-apply"></button>
+          </div>
+
+          <div id="cart-lines"></div>
+
+          <div class="hip-cart-actions-row">
+            <a href="index.html" class="hip-continue-link"><span class="btn-arrow" id="cl-arrow">←</span><span id="cl-text">واصل التسوّق</span></a>
+            <div id="clear-zone"></div>
+          </div>
+        </div>
+
+        <aside class="hip-summary-card" id="cart-summary"></aside>
+      </div>
+    </section>
+
+    <!-- STEP: CHECKOUT -->
+    <section id="step-checkout" hidden>
+      <h1 class="hip-page-title" id="checkout-title">معلومات الطالب</h1>
+      <p class="hip-page-sub" id="checkout-sub"></p>
+      <div class="hip-2col">
+        <form class="hip-form-grid" id="checkout-form"></form>
+        <aside class="hip-summary-card" id="checkout-summary"></aside>
+      </div>
+    </section>
+
+    <!-- STEP: REVIEW -->
+    <section id="step-review" hidden>
+      <h1 class="hip-page-title" id="review-title">راجع طلبك</h1>
+      <p class="hip-page-sub" id="review-sub"></p>
+      <div class="hip-2col">
+        <div class="hip-review-col">
+          <div class="hip-review-block" id="review-order"></div>
+          <div class="hip-review-block" id="review-info"></div>
+        </div>
+        <aside class="hip-summary-card" id="review-summary"></aside>
+      </div>
+    </section>
+
+    <!-- STEP: DONE -->
+    <section id="step-done" hidden>
+      <div class="hip-done-hero">
+        <span class="hip-done-icon">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0E7490" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </span>
+        <h1 id="done-title">تم إنشاء فاتورتك بنجاح ✅</h1>
+        <p id="done-sub"></p>
+        <div class="hip-done-boxes">
+          <div class="hip-done-order-box">
+            <span id="done-order-label">رقم طلبك</span>
+            <span class="mono" id="done-order-id"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hip-2col">
+        <div class="hip-invoice-card" id="invoice-card"></div>
+        <aside class="hip-done-actions" id="done-actions"></aside>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="hip-mobile-bar" id="mobile-bar" hidden>
+    <span class="hip-mobile-bar-total">
+      <span id="mb-label">المجموع النهائي</span>
+      <span class="mono" id="mb-total"></span>
+    </span>
+    <button type="button" class="btn hip-mobile-bar-cta" id="mb-cta"></button>
+  </div>
+
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/store.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js"></script>
+<script src="js/cart.js"></script>
+</body>
+</html>
