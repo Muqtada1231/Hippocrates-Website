@@ -135,6 +135,52 @@
     });
   }
 
+  /* ── finance (Google Sheets) ──
+     كل نداء يمر بـ Edge Function واحدة. سر الويبهوك ورابطه يعيشان في أسرار
+     السيرفر — هذا الملف ما يعرفهما ولا يحتاجهما. نستعمل fetch بدل
+     functions.invoke حتى نقرأ جسم الرد حتى لو رجّع 4xx/5xx: رسالة الخطأ
+     نفسها هي المعلومة المهمة للمدير. */
+  function callFinance(payload) {
+    var cfg = window.HIPPO_CONFIG || {};
+    var c = sb();
+    if (!c) return fail({ message: 'Supabase is not configured.' });
+
+    return c.auth.getSession().then(function (r) {
+      var session = r.data ? r.data.session : null;
+      var token = session ? session.access_token : cfg.supabaseAnonKey;
+      return fetch(cfg.supabaseUrl + '/functions/v1/hippocrates-finance-sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: cfg.supabaseAnonKey,
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify(payload)
+      });
+    }).then(function (res) {
+      return res.text().then(function (txt) {
+        var data = null;
+        try { data = txt ? JSON.parse(txt) : null; } catch (e) {}
+        if (res.status === 404 && !data) {
+          return { ok: false, notDeployed: true, message: 'دالة المزامنة المالية غير منشورة بعد.' };
+        }
+        if (!data) return { ok: false, message: 'رد غير مفهوم من السيرفر (HTTP ' + res.status + ').' };
+        return data;
+      });
+    });
+  }
+
+  function financePing() { return callFinance({ action: 'ping' }); }
+  function syncOrderFinance(orderId) { return callFinance({ action: 'sync_order', orderId: orderId }); }
+  function syncCatalogFinance() { return callFinance({ action: 'sync_catalog' }); }
+
+  function catalogSyncState() {
+    return sb().from('finance_catalog_sync').select('*').maybeSingle().then(function (res) {
+      if (res.error) return null;   // الجدول غير موجود بعد = التكامل لسه ما انصب
+      return res.data;
+    });
+  }
+
   /* ── catalog ── */
   function courses() {
     return sb().from('courses').select('*').order('sort_order', { ascending: true }).then(unwrap);
@@ -178,6 +224,8 @@
     orders: orders, setOrderStatus: setOrderStatus,
     promos: promos, createPromo: createPromo, updatePromo: updatePromo,
     deletePromo: deletePromo, setPromoProducts: setPromoProducts,
+    financePing: financePing, syncOrderFinance: syncOrderFinance,
+    syncCatalogFinance: syncCatalogFinance, catalogSyncState: catalogSyncState,
     courses: courses, updateCourse: updateCourse, lecturers: lecturers,
     packages: packages, updatePackage: updatePackage,
     addPackageCourse: addPackageCourse, removePackageCourse: removePackageCourse

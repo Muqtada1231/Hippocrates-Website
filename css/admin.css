@@ -216,3 +216,14 @@ button[disabled] { opacity: .45; cursor: not-allowed; transform: none; filter: n
 .ad-chip button { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: none; border-radius: 50%; background: var(--border); color: var(--body); font-size: 13px; line-height: 1; }
 .ad-add-select { width: 100%; max-width: 280px; min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: 9px; background: #fff; font-size: 14px; color: var(--ink); outline: none; }
 .ad-hint { font-size: 13px; color: var(--muted); }
+
+/* ── الحسابات (Google Sheets) ───────────────────────────────────────────── */
+.ad-finance { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 11px; background: var(--cream); }
+.ad-finance-head { margin-bottom: 10px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.ad-finance-rows { display: flex; flex-wrap: wrap; gap: 10px 26px; }
+.ad-finance-rows > div { display: flex; align-items: center; gap: 8px; }
+.ad-finance-error { margin: 10px 0 0; font-size: 13px; line-height: 1.6; color: var(--red); word-break: break-word; }
+.ad-finance-issues { margin: 6px 0 0; padding-inline-start: 18px; font-size: 13px; line-height: 1.7; color: var(--red); }
+.ad-btn-resync { min-height: 40px; margin-top: 12px; padding: 0 18px; font-size: 13.5px; }
+.ad-btn-resync[disabled] { opacity: .55; cursor: default; }
+.ad-catalog-sync { margin: 0 0 18px; }

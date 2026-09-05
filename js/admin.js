@@ -48,7 +48,15 @@
       pkgCourses: 'الكورسات المشمولة', remove: 'إزالة', addCourse: '+ إضافة كورس',
       pkgRefOnly: 'محتوى مرجعي فقط (بدون كورسات مرتبطة)',
       errSave: 'تعذر الحفظ', errLoad: 'تعذر تحميل البيانات', errCode: 'أدخل كوداً وقيمة صحيحة',
-      ownerRole: 'المالك', staffRole: 'فريق الدعم'
+      ownerRole: 'المالك', staffRole: 'فريق الدعم',
+      finTitle: 'الحسابات', finPayment: 'الدفع', finSync: 'مزامنة الحسابات', finAt: 'وقت المزامنة',
+      fsNot: 'غير مزامن', fsSyncing: 'جاري المزامنة…', fsSynced: 'مزامن', fsError: 'خطأ بالمزامنة',
+      retrySync: 'إعادة المزامنة المالية', syncingNow: 'جاري…',
+      syncCatalogBtn: 'مزامنة الكتالوك مع الحسابات', lastSync: 'آخر مزامنة',
+      csNot: 'لم تتم بعد', csSynced: 'مكتملة', csPartial: 'ناقصة', csFailed: 'فشلت', csSyncing: 'جارية…',
+      syncIssues: 'منتجات لم يتم ربطها بنظام الحسابات:',
+      finNotDeployed: 'دالة المزامنة المالية غير منشورة بعد — الدفع تأكّد بشكل صحيح.',
+      finConfirmedNoSync: 'تم تأكيد الدفع، لكن المزامنة المالية فشلت. استعمل «إعادة المزامنة المالية».'
     },
     en: {
       cfgTitle: 'Connection not configured', cfgBody: 'The project URL or publishable key is missing. Add them to this file and reload.',
@@ -92,7 +100,15 @@
       pkgCourses: 'Included courses', remove: 'Remove', addCourse: '+ Add course',
       pkgRefOnly: 'Reference contents only (no linked courses)',
       errSave: 'Could not save', errLoad: 'Could not load data', errCode: 'Enter a valid code and value',
-      ownerRole: 'Owner', staffRole: 'Support staff'
+      ownerRole: 'Owner', staffRole: 'Support staff',
+      finTitle: 'Finance', finPayment: 'Payment', finSync: 'Finance sync', finAt: 'Synced at',
+      fsNot: 'Not synced', fsSyncing: 'Syncing…', fsSynced: 'Synced', fsError: 'Sync error',
+      retrySync: 'Retry finance sync', syncingNow: 'Working…',
+      syncCatalogBtn: 'Sync catalog to finance', lastSync: 'Last sync',
+      csNot: 'Never', csSynced: 'Synced', csPartial: 'Partial', csFailed: 'Failed', csSyncing: 'Syncing…',
+      syncIssues: 'Products that could not be mapped in the finance system:',
+      finNotDeployed: 'The finance sync function is not deployed yet — the payment was confirmed correctly.',
+      finConfirmedNoSync: 'Payment confirmed, but the finance sync failed. Use “Retry finance sync”.'
     }
   };
 
@@ -106,6 +122,7 @@
     stats: null, orders: [], orderFilter: 'pending', search: '',
     promos: [], courses: [], packages: [], lecturers: [],
     drafts: {}, savingKey: '', savedKey: '',
+    catalogSync: null, syncingOrders: {}, syncingCatalog: false,
     showPromoForm: false, savingPromo: false, promoError: '',
     pf: { code: '', type: 'percentage', value: '', scope: 'all', start: '', end: '', maxUses: '', maxPer: '', picked: [] },
     toast: ''
@@ -132,6 +149,13 @@
     if (isNaN(d)) return '—';
     var p = function (x) { return String(x).padStart(2, '0'); };
     return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+  function fmtDateTime(v) {
+    if (!v) return '—';
+    var d = new Date(v);
+    if (isNaN(d)) return '—';
+    var p = function (x) { return String(x).padStart(2, '0'); };
+    return fmtDate(v) + ' · ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
   /* every stage a course belongs to — `stages` is the source of truth, `stage` the legacy fallback */
   function courseStageList(c) {
@@ -189,10 +213,12 @@
       api.promos().catch(function () { return []; }),
       api.courses().catch(function () { return []; }),
       api.packages().catch(function () { return []; }),
-      api.lecturers().catch(function () { return []; })
+      api.lecturers().catch(function () { return []; }),
+      api.catalogSyncState().catch(function () { return null; })
     ]).then(function (r) {
       state.stats = r[0]; state.orders = r[1] || []; state.promos = r[2] || [];
       state.courses = r[3] || []; state.packages = r[4] || []; state.lecturers = r[5] || [];
+      state.catalogSync = r[6];
       state.drafts = {};
       render();
     }).catch(function () { toast(T().errLoad); });
@@ -252,16 +278,101 @@
   }
 
   /* ---------- orders ---------- */
+  function patchOrder(id, patch) {
+    state.orders = state.orders.map(function (o) { return o.id === id ? Object.assign({}, o, patch) : o; });
+  }
+
+  /* تأكيد الدفع يبقى على مساره القديم بالضبط: تحديث مباشر تحرسه RLS.
+     المزامنة المالية تجي بعده كخطوة منفصلة، فلو تعطّل جوجل ما يضيع تأكيد
+     الدفع ولا يُطلب من الطالب يدفع مرة ثانية. */
   function setStatus(id, status) {
     var t = T();
     window.HIPPO_ADMIN.setOrderStatus(id, status)
       .then(function (updated) {
-        state.orders = state.orders.map(function (o) { return o.id === id ? Object.assign({}, o, updated) : o; });
+        patchOrder(id, updated);
         render();
         toast(status === 'confirmed' ? t.stConfirmed : status === 'rejected' ? t.stRejected : t.stPending);
+        if (status === 'confirmed') syncFinance(id, true);
         return window.HIPPO_ADMIN.stats().then(function (s) { state.stats = s; render(); }).catch(function () {});
       })
       .catch(function (e) { errToast(t.errSave, e); });
+  }
+
+  /* مزامنة بيع مؤكد واحد. نفس النداء يخدم أول مزامنة وإعادة المحاولة —
+     ونفس رقم الطلب في الحالتين، فحماية التكرار عند جوجل تبقى شغّالة. */
+  function syncFinance(id, quiet) {
+    var t = T();
+    state.syncingOrders[id] = true;
+    patchOrder(id, { finance_sync_status: 'syncing' });
+    render();
+
+    window.HIPPO_ADMIN.syncOrderFinance(id)
+      .then(function (res) {
+        delete state.syncingOrders[id];
+
+        if (res && res.notDeployed) {
+          patchOrder(id, { finance_sync_status: 'not_synced' });
+          render();
+          return toast(t.finNotDeployed);
+        }
+        if (res && res.ok) {
+          patchOrder(id, {
+            finance_sync_status: 'synced',
+            finance_synced_at: res.syncedAt || new Date().toISOString(),
+            finance_sync_error: null
+          });
+          render();
+          return toast(res.message || t.fsSynced);
+        }
+        patchOrder(id, {
+          finance_sync_status: 'sync_error',
+          finance_sync_error: (res && res.message) || t.fsError
+        });
+        render();
+        toast(quiet ? t.finConfirmedNoSync : ((res && res.message) || t.fsError));
+      })
+      .catch(function (e) {
+        delete state.syncingOrders[id];
+        patchOrder(id, { finance_sync_status: 'sync_error', finance_sync_error: (e && e.message) || '' });
+        render();
+        errToast(t.fsError, e);
+      });
+  }
+
+  function syncCatalogToFinance() {
+    var t = T();
+    if (state.syncingCatalog) return;
+    state.syncingCatalog = true;
+    render();
+
+    window.HIPPO_ADMIN.syncCatalogFinance()
+      .then(function (res) {
+        state.syncingCatalog = false;
+        if (res && res.notDeployed) { render(); return toast(t.finNotDeployed); }
+        return window.HIPPO_ADMIN.catalogSyncState().then(function (s) {
+          state.catalogSync = s;
+          render();
+          toast((res && res.message) || (res && res.ok ? t.csSynced : t.csFailed));
+        });
+      })
+      .catch(function (e) {
+        state.syncingCatalog = false;
+        render();
+        errToast(t.csFailed, e);
+      });
+  }
+
+  function financeLabel(status) {
+    var t = T();
+    if (status === 'synced') return t.fsSynced;
+    if (status === 'syncing') return t.fsSyncing;
+    if (status === 'sync_error') return t.fsError;
+    return t.fsNot;
+  }
+  function financeTagClass(status) {
+    if (status === 'synced') return 'confirmed';
+    if (status === 'sync_error') return 'rejected';
+    return 'pending';
   }
 
   /* ---------- promo form ---------- */
@@ -670,6 +781,7 @@
               (o.promo_code ? '<span>' + esc(t.promo) + ' <b class="promo">' + esc(o.promo_code) + '</b></span>' : '') +
               '<span class="ad-order-total">' + esc(money(o.total)) + '</span>' +
             '</div>' +
+            financeBlock(o) +
             (canAct
               ? '<div class="ad-order-actions">' +
                   '<button class="ad-btn-confirm" type="button" data-confirm="' + esc(o.id) + '">' + esc(t.confirmPay) + '</button>' +
@@ -685,6 +797,37 @@
     wire('[data-confirm]', 'data-confirm', function (id) { setStatus(id, 'confirmed'); });
     wire('[data-reject]', 'data-reject', function (id) { setStatus(id, 'rejected'); });
     wire('[data-reopen]', 'data-reopen', function (id) { setStatus(id, 'pending'); });
+    wire('[data-resync]', 'data-resync', function (id) { syncFinance(id, false); });
+  }
+
+  /* قسم الحسابات داخل بطاقة الطلب — يظهر للطلبات المؤكدة فقط، لأن ما قبل
+     التأكيد ما عندها شي مالي أصلاً. */
+  function financeBlock(o) {
+    if (o.status !== 'confirmed') return '';
+    var t = T();
+    var p = perms();
+    var status = o.finance_sync_status || 'not_synced';
+    var busy = !!state.syncingOrders[o.id] || status === 'syncing';
+    var canRetry = !!p.confirmPayments && !busy && (status === 'sync_error' || status === 'not_synced');
+
+    return '<div class="ad-finance">' +
+      '<div class="ad-finance-head">' + esc(t.finTitle) + '</div>' +
+      '<div class="ad-finance-rows">' +
+        '<div><span class="ad-meta-label">' + esc(t.finPayment) + '</span>' +
+          '<span class="ad-tag confirmed">' + esc(t.stConfirmed) + '</span></div>' +
+        '<div><span class="ad-meta-label">' + esc(t.finSync) + '</span>' +
+          '<span class="ad-tag ' + financeTagClass(status) + '">' + esc(financeLabel(status)) + '</span></div>' +
+        '<div><span class="ad-meta-label">' + esc(t.finAt) + '</span>' +
+          '<span class="ad-meta-value">' + esc(fmtDateTime(o.finance_synced_at)) + '</span></div>' +
+      '</div>' +
+      (status === 'sync_error' && o.finance_sync_error
+        ? '<p class="ad-finance-error">' + esc(o.finance_sync_error) + '</p>'
+        : '') +
+      (canRetry
+        ? '<button class="ad-btn-outline ad-btn-resync" type="button" data-resync="' + esc(o.id) + '">' +
+            esc(t.retrySync) + '</button>'
+        : '') +
+    '</div>';
   }
 
   function wire(sel, attr, fn) {
@@ -842,6 +985,7 @@
 
     document.getElementById('view-slot').innerHTML =
       '<h1>' + esc(t.navCourses) + '</h1><p class="ad-sub">' + esc(t.coursesSub) + '</p>' +
+      catalogSyncBar() +
       '<div class="ad-list">' + state.courses.map(function (c) {
         var id = 'course:' + c.key;
         var src = {
@@ -922,6 +1066,46 @@
     });
     wire('[data-csave]', 'data-csave', function (key) { saveCourse(byKey[key]); });
     wire('[data-ctoggle]', 'data-ctoggle', function (key) { toggleCourse(byKey[key]); });
+    var syncBtn = document.getElementById('btn-sync-catalog');
+    if (syncBtn) syncBtn.addEventListener('click', syncCatalogToFinance);
+  }
+
+  /* شريط مزامنة الكتالوك مع Google Sheets. مزامنة الكتالوك منفصلة تماماً عن
+     مزامنة المبيعات: فشلها ما يمس أي طلب مسجّل. */
+  function catalogSyncBar() {
+    var t = T();
+    if (!perms().editCatalog) return '';
+
+    var cs = state.catalogSync;
+    var status = state.syncingCatalog ? 'syncing' : ((cs && cs.status) || 'not_synced');
+    var labels = {
+      not_synced: t.csNot, syncing: t.csSyncing, synced: t.csSynced,
+      partial: t.csPartial, failed: t.csFailed
+    };
+    var tagClass = status === 'synced' ? 'confirmed'
+      : (status === 'failed' ? 'rejected' : 'pending');
+    var issues = (cs && cs.issues) || [];
+
+    return '<div class="ad-finance ad-catalog-sync">' +
+      '<div class="ad-finance-rows">' +
+        '<div><span class="ad-meta-label">' + esc(t.finTitle) + '</span>' +
+          '<span class="ad-tag ' + tagClass + '">' + esc(labels[status] || status) + '</span></div>' +
+        '<div><span class="ad-meta-label">' + esc(t.lastSync) + '</span>' +
+          '<span class="ad-meta-value">' + esc(fmtDateTime(cs && cs.synced_at)) + '</span></div>' +
+      '</div>' +
+      (cs && cs.error ? '<p class="ad-finance-error">' + esc(cs.error) + '</p>' : '') +
+      (issues.length
+        ? '<p class="ad-finance-error">' + esc(t.syncIssues) + '</p><ul class="ad-finance-issues">' +
+            issues.map(function (x) {
+              var line = [x.code, x.websiteCourseId || x.websitePackageId || x.id || x.key, x.name || x.message]
+                .filter(Boolean).join(' — ');
+              return '<li>' + esc(line || JSON.stringify(x)) + '</li>';
+            }).join('') + '</ul>'
+        : '') +
+      '<button class="ad-btn-outline ad-btn-resync" type="button" id="btn-sync-catalog"' +
+        (state.syncingCatalog ? ' disabled' : '') + '>' +
+        esc(state.syncingCatalog ? t.syncingNow : t.syncCatalogBtn) + '</button>' +
+    '</div>';
   }
 
   /* ---------- packages ---------- */
