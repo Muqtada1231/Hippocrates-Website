@@ -1097,8 +1097,12 @@
       (issues.length
         ? '<p class="ad-finance-error">' + esc(t.syncIssues) + '</p><ul class="ad-finance-issues">' +
             issues.map(function (x) {
-              var line = [x.code, x.websiteCourseId || x.websitePackageId || x.id || x.key, x.name || x.message]
-                .filter(Boolean).join(' — ');
+              /* الويبهوك يرجع الكائن كاملاً؛ نعرض الحقول المعروفة، وأي كائن
+                 ما نعرف شكله ينعرض كما هو بدل ما نبلعه. */
+              var pid = x.websitePackageId || x.websiteCourseId || x.packageId || x.courseId || x.id || x.key;
+              var nm = x.packageName || x.courseName || x.productName || x.name || x.title;
+              var msg = x.error || x.message || x.detail || x.reason;
+              var line = [x.code, pid, nm, msg].filter(Boolean).join(' — ');
               return '<li>' + esc(line || JSON.stringify(x)) + '</li>';
             }).join('') + '</ul>'
         : '') +

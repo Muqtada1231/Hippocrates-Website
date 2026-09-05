@@ -133,17 +133,84 @@ function readOutcome(r: { httpStatus: number; body: unknown; raw: string; networ
   return { ok, code, message, body: b };
 }
 
-/* أي رمز ربط ظاهر بالرد؟ ندوّر بالنص كله حتى ما نعتمد على شكل رد معيّن */
+/* لو رجّع الويبهوك مفتاحاً اسمه سر/توكن لأي سبب، ما نخزنه ولا نرجّعه.
+   ما نمسح المفتاح — نبدّل قيمته، حتى يبقى واضح أنه كان موجوداً. */
+const SECRETISH = /secret|token|password|passwd|api[-_]?key|authorization|credential/i;
+
+function scrubSecrets(node: unknown, depth = 0): unknown {
+  if (depth > 12 || node === null || typeof node !== 'object') return node;
+  if (Array.isArray(node)) return node.map((x) => scrubSecrets(x, depth + 1));
+  const out: Json = {};
+  for (const [k, v] of Object.entries(node as Json)) {
+    out[k] = SECRETISH.test(k) ? '[redacted]' : scrubSecrets(v, depth + 1);
+  }
+  return out;
+}
+
+/* اجمع كائنات المشاكل كما رجّعها Apps Script — كاملة، بلا أي تقليص.
+   ما نفترض أن المشاكل تحت مفتاح معيّن ولا بعمق معيّن: ندور بالرد كله على أي
+   كائن يحمل واحداً من رموز الربط، ونحتفظ فيه حرفياً بكل حقوله
+   (packageName · websitePackageId · error · أي حقل ثاني يضيفه السكربت لاحقاً). */
+function collectIssueObjects(node: unknown, out: Json[], seen: Set<object>, depth = 0): void {
+  if (depth > 12 || node === null || typeof node !== 'object') return;
+  if (seen.has(node as object)) return;
+  seen.add(node as object);
+
+  if (Array.isArray(node)) {
+    for (const x of node) collectIssueObjects(x, out, seen, depth + 1);
+    return;
+  }
+
+  const obj = node as Json;
+  const carriesCode = Object.values(obj).some(
+    (v) => typeof v === 'string' && MAPPING_CODES.includes(v),
+  );
+
+  if (carriesCode) {
+    out.push(obj);        // الكائن كامل، مثل ما وصل
+    return;               // ما ننزل أعمق: هذا هو سجل المشكلة نفسه
+  }
+
+  for (const v of Object.values(obj)) collectIssueObjects(v, out, seen, depth + 1);
+}
+
 function mappingIssues(body: unknown) {
   const text = JSON.stringify(body ?? '');
-  const hits = MAPPING_CODES.filter((c) => text.includes(c));
-  const listed: Json[] = [];
+  const codes = MAPPING_CODES.filter((c) => text.includes(c));
+
+  const found: Json[] = [];
+  collectIssueObjects(body, found, new Set());
+
+  /* المفاتيح المعتادة كمان — تلقط أي مشكلة موصوفة بدون حقل code */
   const b = (body ?? {}) as Json;
   for (const key of ['issues', 'errors', 'unmapped', 'failed', 'warnings', 'problems']) {
     const v = b[key];
-    if (Array.isArray(v)) for (const x of v) listed.push(typeof x === 'object' ? (x as Json) : { message: String(x) });
+    if (!Array.isArray(v)) continue;
+    for (const x of v) found.push(typeof x === 'object' && x !== null ? (x as Json) : { message: String(x) });
   }
-  return { codes: hits, listed };
+
+  /* إزالة التكرار مع الحفاظ على الكائن الكامل */
+  const listed: Json[] = [];
+  const fingerprints = new Set<string>();
+  for (const x of found) {
+    const fp = JSON.stringify(x);
+    if (fingerprints.has(fp)) continue;
+    fingerprints.add(fp);
+    listed.push(scrubSecrets(x) as Json);
+  }
+
+  /* رمز ظهر بالرد بس ما لقينا كائنه: نسجّله كتلميح، ونقول وين يلقى التفاصيل.
+     ما نخترع حقولاً ما رجّعها السكربت. */
+  const described = JSON.stringify(listed);
+  for (const c of codes) {
+    if (described.includes(c)) continue;
+    listed.push({
+      code: c,
+      detail: 'لم يرجع الويبهوك كائناً موصوفاً لهذا الرمز — الرد الخام محفوظ في finance_catalog_sync.response و finance_sync_log.response.',
+    });
+  }
+
+  return { codes, listed };
 }
 
 /* ── حصة كل بند من خصم الكود ──────────────────────────────────────────────────
@@ -408,13 +475,17 @@ async function syncCatalog(actorEmail: string) {
   const status = !outcome.ok ? 'failed' : (hasIssues ? 'partial' : 'synced');
   const now = new Date().toISOString();
 
+  /* الرد الخام كما وصل — بلا تقليص ولا إعادة بناء. هذا مرجع التشخيص الوحيد
+     الموثوق لما يختلف شكل رد Apps Script عن توقعنا. */
+  const rawResponse = (scrubSecrets(res.body) ?? { raw: (res.raw || '').slice(0, 4000) }) as Json;
+
   await db.from('finance_sync_log').insert({
     order_id: null,
     action: 'sync_catalog',
     ok: status === 'synced',
     http_status: res.httpStatus,
     request: { action: 'sync_catalog', courses: courses.length, packages: packages.length, packageComponents: packageComponents.length },
-    response: (res.body ?? { raw: (res.raw || '').slice(0, 2000) }) as Json,
+    response: rawResponse,
     error: status === 'synced' ? null : (outcome.message || outcome.code || issues.codes.join(', ')),
   });
 
@@ -425,7 +496,8 @@ async function syncCatalog(actorEmail: string) {
     packages_sent: packages.length,
     courses_mapped: Number((res.body as Json)?.coursesMapped ?? NaN) || null,
     packages_mapped: Number((res.body as Json)?.packagesMapped ?? NaN) || null,
-    issues: [...issues.listed, ...issues.codes.map((c) => ({ code: c }))],
+    issues: issues.listed,          // كائنات كاملة، مو رموز مجرّدة
+    response: rawResponse,
     error: status === 'synced' ? null : (outcome.message || outcome.code || issues.codes.join(', ') || null),
     by_email: actorEmail,
   }).eq('id', true);
@@ -437,7 +509,9 @@ async function syncCatalog(actorEmail: string) {
     coursesSent: courses.length,
     packagesSent: packages.length,
     issueCodes: issues.codes,
-    issues: issues.listed,
+    issues: issues.listed,          // نفس الكائنات الكاملة للمتصل
+    webhookResponse: rawResponse,   // والرد الخام كامل، للتشخيص
+    httpStatus: res.httpStatus,
     message: status === 'synced'
       ? `تمت مزامنة ${courses.length} كورس و${packages.length} بكج.`
       : (outcome.message || outcome.code || 'بعض المنتجات ما انربطت.'),
