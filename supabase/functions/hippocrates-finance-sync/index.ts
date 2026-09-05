@@ -437,8 +437,14 @@ async function syncCatalog(actorEmail: string) {
     };
   });
 
+  /* `packageName` هو الاسم اللي يقرأه syncPackage_ بـ Apps Script. كنا نرسل
+     الاسم بمفتاح `name` فقط، فرفض التسعة كلهم بـ MISSING_PACKAGE_NAME.
+     نضيف المفتاح الصحيح ونبقي `name` كما هو — إضافة مفتاح ما تكسر شي، وحذف
+     مفتاح شغّال ممكن يكسر. القيمة نفسها من `packages.name` بـ Supabase،
+     بلا أي اسم مكتوب يدوياً. */
   const packages = (packagesRes.data ?? []).map((p: Json) => ({
     websitePackageId: p.key,                       // معرّف Supabase الحقيقي
+    packageName: p.name ?? '',                     // ← المفتاح اللي يتوقعه Apps Script
     name: p.name ?? '',
     nameAr: p.name_ar ?? '',
     stage: p.stage ?? null,
