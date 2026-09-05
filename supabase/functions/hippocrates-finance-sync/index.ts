@@ -52,6 +52,18 @@ const MAPPING_CODES = [
   'UNMAPPED_PACKAGE',
 ];
 
+/* بنود المحتوى المرجعي (بكج المرحلة السادسة) تعرفها الأنظمة بأسماء مختلفة:
+   الموقع يعرض "Obstetrics & Gynecology" للطالب، ونظام الحسابات يعرفها
+   "Obs & Gyne". هذا جسر تسمية بين نظامين على المفتاح الثابت ref_key —
+   مو بيانات عمل مكرّرة: المبالغ ومعرّف البكج كلها تُقرأ حيّة من Supabase،
+   ولا عنوان واحد بالموقع ينتغيّر. */
+const REFERENCE_ITEM_NAMES: Record<string, string> = {
+  'ref-medicine': 'Internal Medicine',
+  'ref-surgery': 'Surgery',
+  'ref-obgyn': 'Obs & Gyne',
+  'ref-peds': 'Pediatrics',
+};
+
 type Json = Record<string, unknown>;
 
 function json(body: Json, status = 200): Response {
@@ -415,14 +427,16 @@ async function syncOrder(orderId: string, actorEmail: string) {
 async function syncCatalog(actorEmail: string) {
   const db = admin();
 
-  const [coursesRes, packagesRes, linksRes, lecturersRes] = await Promise.all([
+  const [coursesRes, packagesRes, linksRes, lecturersRes, refsRes] = await Promise.all([
     db.from('courses').select('*').order('sort_order', { ascending: true }),
     db.from('packages').select('*').order('sort_order', { ascending: true }),
     db.from('package_courses').select('package_id, course_id, allocation, sort_order'),
     db.from('lecturers').select('key, name_en, name_ar'),
+    db.from('package_ref_items').select('package_id, ref_key, title, allocation, sort_order'),
   ]);
 
-  const firstError = coursesRes.error || packagesRes.error || linksRes.error || lecturersRes.error;
+  const firstError = coursesRes.error || packagesRes.error || linksRes.error
+    || lecturersRes.error || refsRes.error;
   if (firstError) return json({ ok: false, key: 'load-failed', message: firstError.message }, 500);
 
   const lecturers = new Map<string, { en: string; ar: string }>();
@@ -472,15 +486,46 @@ async function syncCatalog(actorEmail: string) {
     updatedAt: p.updated_at ?? null,
   }));
 
-  const packageComponents = (linksRes.data ?? [])
+  /* المكوّنات القياسية — كورس حقيقي داخل بكج. الشكل كما هو، ما ننزع منه مفتاحاً
+     ولا نضيف componentType. أضفنا `approvedAllocationIQD` بجنب `allocationIQD`
+     لأن عقد Apps Script المعتمد يسمّيه هيك؛ إضافة مفتاح ما تكسر قارئاً، ونفس
+     القيمة بالضبط بالاثنين. */
+  const standardComponents = (linksRes.data ?? [])
     .slice()
     .sort((a: Json, b: Json) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
-    .map((l: Json) => ({
-      websitePackageId: l.package_id,
-      websiteCourseId: l.course_id,
-      allocationIQD: Number(l.allocation) || 0,
-      sortOrder: Number(l.sort_order) || 0,
-    }));
+    .map((l: Json) => {
+      const iqd = Number(l.allocation) || 0;
+      return {
+        websitePackageId: l.package_id,
+        websiteCourseId: l.course_id,
+        approvedAllocationIQD: iqd,
+        allocationIQD: iqd,
+        sortOrder: Number(l.sort_order) || 0,
+      };
+    });
+
+  /* بنود المحتوى المرجعي — بكج المرحلة السادسة. ما تنتمي لأي كورس، فما نرسل
+     لها websiteCourseId ولا نخترع معرّف كورس وهمي. الاسم من جسر ref_key،
+     والمبلغ ومعرّف البكج من Supabase مباشرة. */
+  const referenceFallbacks: string[] = [];
+  const referenceComponents = (refsRes.data ?? [])
+    .slice()
+    .sort((a: Json, b: Json) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
+    .map((r: Json) => {
+      const refKey = String(r.ref_key ?? '');
+      const mapped = REFERENCE_ITEM_NAMES[refKey];
+      /* بند جديد ما ننعرف اسمه بالحسابات: نرسله بعنوان الموقع بدل ما نُسقطه
+         بصمت ونضيّع توزيعه، ونبلّغ عنه بالرد حتى ينضاف للجسر. */
+      if (!mapped) referenceFallbacks.push(refKey);
+      return {
+        componentType: 'reference',
+        websitePackageId: r.package_id,
+        referenceItemName: mapped ?? String(r.title ?? ''),
+        approvedAllocationIQD: Number(r.allocation) || 0,
+      };
+    });
+
+  const packageComponents = [...standardComponents, ...referenceComponents];
 
   await db.from('finance_catalog_sync').update({
     status: 'syncing', error: null, by_email: actorEmail,
@@ -532,6 +577,10 @@ async function syncCatalog(actorEmail: string) {
     syncedAt: outcome.ok ? now : null,
     coursesSent: courses.length,
     packagesSent: packages.length,
+    standardComponentsSent: standardComponents.length,
+    referenceComponentsSent: referenceComponents.length,
+    componentsSent: packageComponents.length,
+    referenceNameFallbacks: referenceFallbacks,
     issueCodes: issues.codes,
     issues: issues.listed,          // نفس الكائنات الكاملة للمتصل
     webhookResponse: rawResponse,   // والرد الخام كامل، للتشخيص
