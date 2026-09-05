@@ -435,8 +435,13 @@ async function syncCatalog(actorEmail: string) {
     const stages = Array.isArray(c.stages) && (c.stages as unknown[]).length
       ? (c.stages as number[])
       : (c.stage != null ? [c.stage as number] : []);
+    /* `courseName` هو المفتاح اللي يقرأه syncCourse_ بـ Apps Script — نفس
+       قصة `packageName` بالضبط. كنا نرسل الاسم بمفتاح `name` فقط، فرفض
+       الـ 23 كلهم بـ MISSING_COURSE_NAME. القيمة من `courses.title` بـ
+       Supabase، بلا أي اسم مكتوب يدوياً، ونبقي `name` للتوافق. */
     return {
       websiteCourseId: c.key,                      // معرّف Supabase الحقيقي — ما نخترع معرّفات
+      courseName: c.title ?? '',                   // ← المفتاح اللي يتوقعه Apps Script
       name: c.title ?? '',
       nameAr: c.title_ar ?? '',
       stages,
