@@ -79,7 +79,7 @@
       joinNow: 'انضم للقناة', followNow: 'تابع الحساب',
       contact: 'تواصل معنا', contactCta: 'راسل الدعم',
       cart: 'السلة', addToCart: 'أضف إلى السلة', inCart: 'موجود بالسلة ✓', addPkg: 'أضف الباقة للسلة',
-      displayOnly: 'للعرض فقط', displayOnlyNote: 'غير معروض للبيع — الوصول يُمنح من الإدارة.',
+      displayOnly: 'للعرض فقط', displayOnlyNote: 'غير معروض للبيع — الوصول يُمنح من الإدارة.', refValue: 'القيمة المرجعية',
       toastAdded: 'تمت الإضافة إلى السلة ✓', toastAlready: 'موجود بالسلة أصلاً', toastKept: 'مشمول ضمن باقة موجودة بالسلة',
       viewCart: 'شوف السلة',
       dupTitle: 'محتوى مكرر',
@@ -140,7 +140,7 @@
       joinNow: 'Join channel', followNow: 'Follow',
       contact: 'Contact us', contactCta: 'Message support',
       cart: 'Cart', addToCart: 'Add to cart', inCart: 'Already in cart ✓', addPkg: 'Add package to cart',
-      displayOnly: 'Display only', displayOnlyNote: 'Not for sale — access is granted by the team.',
+      displayOnly: 'Display only', displayOnlyNote: 'Not for sale — access is granted by the team.', refValue: 'Reference value',
       toastAdded: 'Added to cart ✓', toastAlready: 'Already in your cart', toastKept: 'Already included in a package in your cart',
       viewCart: 'View cart',
       dupTitle: 'Duplicate content',
@@ -290,13 +290,18 @@
         '</div>'
       );
     }).join('');
+    /* بكج العرض فقط: القيمة المرجعية تبقى ظاهرة، ودلالات الخصم تختفي */
+    var buyable = p.purchasable !== false;
     document.getElementById('pm-original').textContent = h.money(m.original);
     document.getElementById('pm-price').textContent = h.money(m.price);
-    document.getElementById('pm-save').textContent = h.money(m.save);
-    document.getElementById('pm-pct').textContent = m.pct + ' ' + (ar ? 'خصم' : 'OFF');
-    /* بكج العرض فقط: التفاصيل كلها تبقى مقروءة، بس بلا زر شراء */
+    var pmSave = document.getElementById('pm-save');
+    var pmPct = document.getElementById('pm-pct');
+    pmSave.textContent = buyable ? h.money(m.save) : '';
+    pmPct.textContent = buyable ? (m.pct + ' ' + (ar ? 'خصم' : 'OFF')) : '';
+    if (pmSave.parentNode) pmSave.parentNode.hidden = !buyable;
+    pmPct.hidden = !buyable;
+
     var addBtn = document.getElementById('pm-add');
-    var buyable = p.purchasable !== false;
     addBtn.hidden = !buyable;
     addBtn.disabled = !buyable;
     if (buyable) {
@@ -494,8 +499,13 @@
         name: ar ? p.nameAr : p.name,
         desc: ar ? p.descAr : p.desc,
         featured: !!p.featured,
-        best: p.bestValue ? t.bestValue : '',
-        offer: h.offerLive(p) ? t.firstMonth : '',
+        /* منتج غير قابل للشراء ما يحمل أي دلالة تجارية: لا شارة عرض ولا
+           حملة خصم ولا "الأفضل قيمة" ولا نسبة خصم ولا سطر توفير. تبقى
+           القيمة المرجعية ومعلومات البكج ظاهرة. هذا الشرط على purchasable
+           نفسه، مو على promo_enabled — حتى لو انقلب عَلَم العروض غلطاً
+           لاحقاً، ما تظهر شارة على منتج ما ينباع. */
+        best: (p.purchasable !== false && p.bestValue) ? t.bestValue : '',
+        offer: (p.purchasable !== false && h.offerLive(p)) ? t.firstMonth : '',
         countLabel: t.included(m.items.length),
         items: m.items.map(function (c) { return ar ? c.titleAr : c.title; }),
         original: h.money(m.original),
@@ -526,12 +536,16 @@
           '</ul>' +
           '<div class="hip-pkg-pricebox">' +
             '<div class="hip-pkg-instead-row">' +
-              '<span class="hip-pkg-instead-label">' + esc(t.instead) + '</span>' +
+              '<span class="hip-pkg-instead-label">' + esc(v.purchasable ? t.instead : t.refValue) + '</span>' +
               '<span class="hip-pkg-strike mono">' + esc(v.original) + '</span>' +
-              '<span class="hip-pkg-off-pill"><span class="mono">' + esc(v.pctNum) + '</span> ' + esc(offWord) + '</span>' +
+              (v.purchasable
+                ? '<span class="hip-pkg-off-pill"><span class="mono">' + esc(v.pctNum) + '</span> ' + esc(offWord) + '</span>'
+                : '') +
             '</div>' +
             '<div class="hip-pkg-price mono">' + esc(v.price) + '</div>' +
-            '<div class="hip-pkg-save"><span class="mono">' + esc(v.save) + '</span> ' + esc(t.youSave) + '</div>' +
+            (v.purchasable
+              ? '<div class="hip-pkg-save"><span class="mono">' + esc(v.save) + '</span> ' + esc(t.youSave) + '</div>'
+              : '') +
           '</div>' +
           '<div class="hip-pkg-actions">' +
             (v.purchasable
@@ -548,7 +562,9 @@
       return (
         '<article class="hip-pkg-card compact">' +
           '<div class="hip-pkg-badges">' +
-            '<span class="hip-pkg-off-pill"><span class="mono">' + esc(v.pctNum) + '</span> ' + esc(offWord) + '</span>' +
+            (v.purchasable
+              ? '<span class="hip-pkg-off-pill"><span class="mono">' + esc(v.pctNum) + '</span> ' + esc(offWord) + '</span>'
+              : '<span class="hip-pkg-display-tag">' + esc(t.displayOnly) + '</span>') +
             (v.offer ? '<span class="hip-pkg-badge offer">' + esc(v.offer) + '</span>' : '') +
           '</div>' +
           '<h3 class="hip-pkg-name compact">' + esc(v.name) + '</h3>' +
@@ -561,7 +577,9 @@
               '<span class="hip-pkg-price compact mono">' + esc(v.price) + '</span>' +
               '<span class="hip-pkg-strike mono">' + esc(v.original) + '</span>' +
             '</div>' +
-            '<div class="hip-pkg-save compact"><span class="mono">' + esc(v.save) + '</span> ' + esc(t.youSave) + '</div>' +
+            (v.purchasable
+              ? '<div class="hip-pkg-save compact"><span class="mono">' + esc(v.save) + '</span> ' + esc(t.youSave) + '</div>'
+              : '') +
             '<div class="hip-pkg-actions compact">' +
               (v.purchasable
                 ? '<button type="button" class="hip-pkg-add-outline' + (v.inCart ? ' in-cart' : '') + '" data-pkg-add="' + v.id + '">' + esc(v.inCart ? t.inCart : t.getPackage) + '<span class="btn-arrow">' + t.arrow + '</span></button>'

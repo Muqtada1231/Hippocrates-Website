@@ -227,3 +227,6 @@ button[disabled] { opacity: .45; cursor: not-allowed; transform: none; filter: n
 .ad-btn-resync { min-height: 40px; margin-top: 12px; padding: 0 18px; font-size: 13.5px; }
 .ad-btn-resync[disabled] { opacity: .55; cursor: default; }
 .ad-catalog-sync { margin: 0 0 18px; }
+.ad-tag.display-only { background: #F6EFE2; color: var(--gold, #B08D57); border: 1px dashed currentColor; }
+.ad-display-only-box { margin: 12px 0 4px; padding: 12px 14px; border: 1px dashed var(--border); border-radius: 10px; background: var(--cream); }
+.ad-display-only-box .ad-hint { margin: 8px 0 0; line-height: 1.65; }

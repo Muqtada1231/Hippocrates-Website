@@ -47,6 +47,10 @@
       pkgPrice: 'سعر البكج (IQD)', promoLabel: 'عنوان العرض', promoLabelHint: 'مثال: عرض بداية السنة',
       pkgCourses: 'الكورسات المشمولة', remove: 'إزالة', addCourse: '+ إضافة كورس',
       pkgRefOnly: 'محتوى مرجعي فقط (بدون كورسات مرتبطة)',
+      displayOnlyTag: 'للعرض فقط — غير قابل للشراء',
+      commercialStatus: 'الحالة التجارية', purchasableLabel: 'قابل للشراء',
+      yesWord: 'نعم', noWord: 'لا',
+      displayOnlyNote: 'هذا البكج للعرض والوصول التعليمي فقط: يظهر للطلاب وما ينباع. تغيير هذي الحالة يصير من قاعدة البيانات، مو من هنا.',
       errSave: 'تعذر الحفظ', errLoad: 'تعذر تحميل البيانات', errCode: 'أدخل كوداً وقيمة صحيحة',
       ownerRole: 'المالك', staffRole: 'فريق الدعم',
       finTitle: 'الحسابات', finPayment: 'الدفع', finSync: 'مزامنة الحسابات', finAt: 'وقت المزامنة',
@@ -99,6 +103,10 @@
       pkgPrice: 'Package price (IQD)', promoLabel: 'Promotion label', promoLabelHint: 'e.g. New year offer',
       pkgCourses: 'Included courses', remove: 'Remove', addCourse: '+ Add course',
       pkgRefOnly: 'Reference contents only (no linked courses)',
+      displayOnlyTag: 'Display only — not purchasable',
+      commercialStatus: 'Commercial status', purchasableLabel: 'Purchasable',
+      yesWord: 'Yes', noWord: 'No',
+      displayOnlyNote: 'This package is for display and educational access only: students can see it but cannot buy it. Changing that is done in the database, not here.',
       errSave: 'Could not save', errLoad: 'Could not load data', errCode: 'Enter a valid code and value',
       ownerRole: 'Owner', staffRole: 'Support staff',
       finTitle: 'Finance', finPayment: 'Payment', finSync: 'Finance sync', finAt: 'Synced at',
@@ -1133,7 +1141,22 @@
         var included = (x.package_courses || []).map(function (pc) { return pc.course_id; });
         return '<div class="ad-pkg">' +
           '<div class="ad-pkg-head"><h2>' + esc(isAr() ? x.name_ar : x.name) + '</h2>' +
-            '<span class="ad-tag ' + (x.enabled ? 'live' : 'neutral') + '">' + esc(x.enabled ? t.stEnabled : t.stHidden) + '</span></div>' +
+            '<span class="ad-tag ' + (x.enabled ? 'live' : 'neutral') + '">' + esc(x.enabled ? t.stEnabled : t.stHidden) + '</span>' +
+            (x.purchasable === false
+              ? '<span class="ad-tag display-only">' + esc(t.displayOnlyTag) + '</span>'
+              : '') + '</div>' +
+          /* حالة تجارية للقراءة فقط: بلا مفتاح تبديل، حتى ما ينفتح البيع بالغلط */
+          (x.purchasable === false
+            ? '<div class="ad-display-only-box">' +
+                '<div class="ad-finance-rows">' +
+                  '<div><span class="ad-meta-label">' + esc(t.commercialStatus) + '</span>' +
+                    '<span class="ad-tag display-only">DISPLAY ONLY / NON-PURCHASABLE</span></div>' +
+                  '<div><span class="ad-meta-label">' + esc(t.purchasableLabel) + '</span>' +
+                    '<span class="ad-tag rejected">' + esc(t.noWord) + '</span></div>' +
+                '</div>' +
+                '<p class="ad-hint">' + esc(t.displayOnlyNote) + '</p>' +
+              '</div>'
+            : '') +
           '<div class="ad-pkg-math">' +
             '<span>' + esc(t.listValue) + ' <b>' + esc(money(math.original)) + '</b></span>' +
             '<span>' + esc(t.savings) + ' <b class="good">' + esc(money(math.save)) + '</b></span>' +
