@@ -165,7 +165,7 @@
       price: 80000, offer: { enabled: true, start: null, end: null }
     },
     {
-      id: 'year6', featured: true, bestValue: false, enabled: true, stage: 6,
+      id: 'year6', featured: true, bestValue: false, enabled: true, purchasable: false, stage: 6,
       name: 'Sixth Year Comprehensive Package', nameAr: 'بكج المرحلة السادسة',
       desc: 'Medicine + Surgery + Obs & Gyne + Pediatrics — four major final-year components.',
       descAr: 'الباطنية + الجراحة + النسائية والتوليد + الأطفال — أربعة محاور أساسية لسنة التخرج.',
@@ -324,7 +324,16 @@
     return getCart().some(function (it) { return it.type === type && it.productId === productId; });
   }
 
+  /* بكج العرض فقط ما يدخل السلة. السيرفر يرفضه على أي حال
+     (hippo_resolve_cart)، وهذا يمنع الطالب من الوصول لتلك النقطة أصلاً. */
+  function isPurchasable(type, productId) {
+    if (type !== 'package') return true;
+    var p = packageById(productId);
+    return !p || p.purchasable !== false;
+  }
+
   function addToCart(type, productId) {
+    if (!isPurchasable(type, productId)) return false;
     if (inCart(type, productId)) return false;
     var items = getCart();
     items.push({
@@ -702,6 +711,7 @@
       desc: r.description, descAr: r.description_ar,
       stage: r.stage, price: r.price,
       featured: !!r.featured, bestValue: !!r.best_value, enabled: r.enabled !== false,
+      purchasable: r.purchasable !== false,
       courses: contents.map(function (x) { return x.course_id; }),
       offer: { enabled: r.promo_enabled !== false, start: r.promo_start || null, end: r.promo_end || null }
     };
@@ -760,6 +770,7 @@
     courseStages: courseStages, inStage: inStage, stageLabel: stageLabel,
     pkgMath: pkgMath, courseMath: courseMath, offerLive: offerLive, initials: initials, stageById: stageById,
     getCart: getCart, inCart: inCart, addToCart: addToCart, removeFromCart: removeFromCart,
+    isPurchasable: isPurchasable,
     clearCart: clearCart, cartCount: cartCount, cartLines: cartLines, cartTotals: cartTotals,
     conflictsFor: conflictsFor, upsellFor: upsellFor, applyUpsell: applyUpsell, createOrder: createOrder, getOrder: getOrder,
     getPromo: getPromo, applyPromo: applyPromo, removePromo: removePromo, refreshPromo: refreshPromo, validatePromo: validatePromo,

@@ -79,6 +79,7 @@
       joinNow: 'انضم للقناة', followNow: 'تابع الحساب',
       contact: 'تواصل معنا', contactCta: 'راسل الدعم',
       cart: 'السلة', addToCart: 'أضف إلى السلة', inCart: 'موجود بالسلة ✓', addPkg: 'أضف الباقة للسلة',
+      displayOnly: 'للعرض فقط', displayOnlyNote: 'غير معروض للبيع — الوصول يُمنح من الإدارة.',
       toastAdded: 'تمت الإضافة إلى السلة ✓', toastAlready: 'موجود بالسلة أصلاً', toastKept: 'مشمول ضمن باقة موجودة بالسلة',
       viewCart: 'شوف السلة',
       dupTitle: 'محتوى مكرر',
@@ -139,6 +140,7 @@
       joinNow: 'Join channel', followNow: 'Follow',
       contact: 'Contact us', contactCta: 'Message support',
       cart: 'Cart', addToCart: 'Add to cart', inCart: 'Already in cart ✓', addPkg: 'Add package to cart',
+      displayOnly: 'Display only', displayOnlyNote: 'Not for sale — access is granted by the team.',
       toastAdded: 'Added to cart ✓', toastAlready: 'Already in your cart', toastKept: 'Already included in a package in your cart',
       viewCart: 'View cart',
       dupTitle: 'Duplicate content',
@@ -292,9 +294,26 @@
     document.getElementById('pm-price').textContent = h.money(m.price);
     document.getElementById('pm-save').textContent = h.money(m.save);
     document.getElementById('pm-pct').textContent = m.pct + ' ' + (ar ? 'خصم' : 'OFF');
+    /* بكج العرض فقط: التفاصيل كلها تبقى مقروءة، بس بلا زر شراء */
     var addBtn = document.getElementById('pm-add');
-    addBtn.textContent = h.inCart('package', p.id) ? t.inCart : t.addPkg;
-    addBtn.onclick = function () { addItem('package', p.id); closePkgModal(); };
+    var buyable = p.purchasable !== false;
+    addBtn.hidden = !buyable;
+    addBtn.disabled = !buyable;
+    if (buyable) {
+      addBtn.textContent = h.inCart('package', p.id) ? t.inCart : t.addPkg;
+      addBtn.onclick = function () { addItem('package', p.id); closePkgModal(); };
+    } else {
+      addBtn.onclick = null;
+    }
+    var pmNote = document.getElementById('pm-display-note');
+    if (!pmNote) {
+      pmNote = document.createElement('p');
+      pmNote.id = 'pm-display-note';
+      pmNote.className = 'hip-pkg-display-note';
+      addBtn.parentNode.insertBefore(pmNote, addBtn);
+    }
+    pmNote.hidden = buyable;
+    pmNote.textContent = buyable ? '' : t.displayOnlyNote;
 
     state.pkg = id;
     pmOverlay.classList.remove('hidden');
@@ -483,7 +502,8 @@
         price: h.money(m.price),
         pctNum: m.pct,
         save: h.money(m.save),
-        inCart: h.inCart('package', p.id)
+        inCart: h.inCart('package', p.id),
+        purchasable: p.purchasable !== false
       };
     });
 
@@ -514,7 +534,10 @@
             '<div class="hip-pkg-save"><span class="mono">' + esc(v.save) + '</span> ' + esc(t.youSave) + '</div>' +
           '</div>' +
           '<div class="hip-pkg-actions">' +
-            '<button type="button" class="btn hip-pkg-add' + (v.inCart ? ' in-cart' : '') + '" data-pkg-add="' + v.id + '">' + esc(v.inCart ? t.inCart : t.getPackage) + '<span class="btn-arrow">' + t.arrow + '</span></button>' +
+            (v.purchasable
+              ? '<button type="button" class="btn hip-pkg-add' + (v.inCart ? ' in-cart' : '') + '" data-pkg-add="' + v.id + '">' + esc(v.inCart ? t.inCart : t.getPackage) + '<span class="btn-arrow">' + t.arrow + '</span></button>'
+              : '<div class="hip-pkg-display-only"><span class="hip-pkg-display-tag">' + esc(t.displayOnly) + '</span>' +
+                '<span class="hip-pkg-display-note">' + esc(t.displayOnlyNote) + '</span></div>') +
             '<button type="button" class="hip-pkg-details" data-pkg-open="' + v.id + '">' + esc(t.viewDetails) + '</button>' +
           '</div>' +
         '</article>'
@@ -540,7 +563,9 @@
             '</div>' +
             '<div class="hip-pkg-save compact"><span class="mono">' + esc(v.save) + '</span> ' + esc(t.youSave) + '</div>' +
             '<div class="hip-pkg-actions compact">' +
-              '<button type="button" class="hip-pkg-add-outline' + (v.inCart ? ' in-cart' : '') + '" data-pkg-add="' + v.id + '">' + esc(v.inCart ? t.inCart : t.getPackage) + '<span class="btn-arrow">' + t.arrow + '</span></button>' +
+              (v.purchasable
+                ? '<button type="button" class="hip-pkg-add-outline' + (v.inCart ? ' in-cart' : '') + '" data-pkg-add="' + v.id + '">' + esc(v.inCart ? t.inCart : t.getPackage) + '<span class="btn-arrow">' + t.arrow + '</span></button>'
+                : '<div class="hip-pkg-display-only"><span class="hip-pkg-display-tag">' + esc(t.displayOnly) + '</span></div>') +
               '<button type="button" class="hip-pkg-details" data-pkg-open="' + v.id + '">' + esc(t.viewDetails) + '</button>' +
             '</div>' +
           '</div>' +

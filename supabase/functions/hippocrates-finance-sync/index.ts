@@ -302,7 +302,32 @@ async function syncOrder(orderId: string, actorEmail: string) {
     return json({ ok: false, key: 'no-items', message: 'الطلب بدون بنود.' }, 409);
   }
 
-  /* 3 — تحقّق من المبالغ قبل ما نرسل أي شي للحسابات */
+  /* 3 — بكج عرض فقط ما يجوز يصير له بيع مدفوع.
+     hippo_resolve_cart يمنعه من الأساس، فوصوله لهنا يعني إما طلباً قديماً
+     سابقاً للقرار أو إدخالاً يدوياً. نوقف قبل ما ننشئ Transaction مدفوعة
+     ولا حصص محاضرين — وحالة الدفع بالطلب تبقى كما هي، ما نلمسها. */
+  const nonCommercialIds = new Set<string>();
+  const pkgIds = items.filter((i) => String(i.item_type) === 'package').map((i) => String(i.product_id));
+  if (pkgIds.length) {
+    const { data: pkgRows } = await db
+      .from('packages').select('key, purchasable').in('key', pkgIds);
+    for (const row of pkgRows ?? []) {
+      if ((row as Json).purchasable === false) nonCommercialIds.add(String((row as Json).key));
+    }
+  }
+  if (nonCommercialIds.size) {
+    const names = [...nonCommercialIds].join(', ');
+    await db.from('orders').update({
+      finance_sync_status: 'sync_error',
+      finance_sync_error: `NON_COMMERCIAL_PACKAGE — الطلب يحتوي بكج عرض فقط (${names}). لا تُنشأ معاملة مالية مدفوعة له.`,
+    }).eq('id', order.id);
+    return json({
+      ok: false, key: 'non-commercial',
+      message: `الطلب يحتوي بكج غير قابل للشراء (${names}). ما تنشأ له معاملة مالية — الوصول يُمنح إدارياً بلا بيع.`,
+    }, 409);
+  }
+
+  /* 4 — تحقّق من المبالغ قبل ما نرسل أي شي للحسابات */
   const prices = items.map((i) => Number(i.price) || 0);
   const originals = items.map((i) => Number(i.original_price ?? i.price) || 0);
   const itemsSum = prices.reduce((s, p) => s + p, 0);
@@ -326,7 +351,7 @@ async function syncOrder(orderId: string, actorEmail: string) {
   const promoAlloc = allocateDiscount(prices, itemsSum - total);
   const paid = prices.map((p, i) => p - promoAlloc[i]);
 
-  /* 4 — علّم "جاري المزامنة" وارفع عدّاد المحاولات */
+  /* 5 — علّم "جاري المزامنة" وارفع عدّاد المحاولات */
   const confirmedAt = order.confirmed_at ?? new Date().toISOString();
   await db.from('orders').update({
     confirmed_at: confirmedAt,
@@ -335,7 +360,7 @@ async function syncOrder(orderId: string, actorEmail: string) {
     finance_sync_attempts: (Number(order.finance_sync_attempts) || 0) + 1,
   }).eq('id', order.id);
 
-  /* 5 — الحمولة: كلها من القيم المحفوظة وقت الشراء، ولا رقم واحد من كتالوك اليوم */
+  /* 6 — الحمولة: كلها من القيم المحفوظة وقت الشراء، ولا رقم واحد من كتالوك اليوم */
   const tg = String(order.student_telegram ?? '').trim().replace(/^@+/, '').toLowerCase();
 
   const payload: Json = {
@@ -380,7 +405,7 @@ async function syncOrder(orderId: string, actorEmail: string) {
     }),
   };
 
-  /* 6 — نداء واحد لكل طلب، فيه كل البنود (§14) */
+  /* 7 — نداء واحد لكل طلب، فيه كل البنود (§14) */
   const res = await callWebhook(payload);
   const outcome = readOutcome(res);
 
@@ -477,6 +502,10 @@ async function syncCatalog(actorEmail: string) {
   const packages = (packagesRes.data ?? []).map((p: Json) => ({
     websitePackageId: p.key,                       // معرّف Supabase الحقيقي
     packageName: p.name ?? '',                     // ← المفتاح اللي يتوقعه Apps Script
+    /* بكج العرض فقط: يبقى بالكتالوك للمرجع والتقارير، بس ما ينباع، وما
+       يستحق ملكية محاضر ولا توزيع أرباح ولا 10/10/80. */
+    purchasable: p.purchasable !== false,
+    commercialStatus: p.purchasable === false ? 'DISPLAY_ONLY' : 'COMMERCIAL',
     name: p.name ?? '',
     nameAr: p.name_ar ?? '',
     stage: p.stage ?? null,
@@ -507,8 +536,16 @@ async function syncCatalog(actorEmail: string) {
   /* بنود المحتوى المرجعي — بكج المرحلة السادسة. ما تنتمي لأي كورس، فما نرسل
      لها websiteCourseId ولا نخترع معرّف كورس وهمي. الاسم من جسر ref_key،
      والمبلغ ومعرّف البكج من Supabase مباشرة. */
+  /* البكجات غير القابلة للشراء ما ترسل مكوّنات توزيع إطلاقاً: قيمها المرجعية
+     للعرض، مو حصص محاضرين. إرسالها كان راح ينشئ صفوف توزيع لمنتج ما ينباع. */
+  const nonCommercial = new Set(
+    (packagesRes.data ?? []).filter((p: Json) => p.purchasable === false).map((p: Json) => String(p.key)),
+  );
+
   const referenceFallbacks: string[] = [];
+  const referenceExcluded = (refsRes.data ?? []).filter((r: Json) => nonCommercial.has(String(r.package_id))).length;
   const referenceComponents = (refsRes.data ?? [])
+    .filter((r: Json) => !nonCommercial.has(String(r.package_id)))
     .slice()
     .sort((a: Json, b: Json) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
     .map((r: Json) => {
@@ -581,6 +618,8 @@ async function syncCatalog(actorEmail: string) {
     referenceComponentsSent: referenceComponents.length,
     componentsSent: packageComponents.length,
     referenceNameFallbacks: referenceFallbacks,
+    nonCommercialPackages: [...nonCommercial],
+    referenceComponentsExcluded: referenceExcluded,
     issueCodes: issues.codes,
     issues: issues.listed,          // نفس الكائنات الكاملة للمتصل
     webhookResponse: rawResponse,   // والرد الخام كامل، للتشخيص
