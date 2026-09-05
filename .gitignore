@@ -12,3 +12,14 @@
 # مؤقتات
 *.log
 .cache/
+
+# أدوات النشر
+.wrangler/
+node_modules/
+
+# أسرار — ما تنكمت ولا مرة
+.env
+.env.*
+
+# مؤقتات Supabase CLI
+supabase/.temp/

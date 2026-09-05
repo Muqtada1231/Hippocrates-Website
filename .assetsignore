@@ -1,0 +1,33 @@
+# ما ينرفع لـ Cloudflare. الصيغة نفس صيغة .gitignore.
+# مجلد الأصول هو جذر المستودع، فأي ملف مو للمتصفح لازم ينذكر هنا.
+
+# مستودع وأدوات
+.git
+.git/**
+.github
+.github/**
+.wrangler
+.wrangler/**
+node_modules
+node_modules/**
+
+# أسرار وبيئة
+.env
+.env.*
+
+# كل ما يخص السيرفر: SQL و Edge Functions ووثائق النشر
+supabase
+supabase/**
+*.sql
+
+# ملفات إعداد ما تخص المتصفح
+wrangler.jsonc
+wrangler.json
+wrangler.toml
+.gitignore
+*.md
+
+# مؤقتات محلية
+.DS_Store
+**/.DS_Store
+*.log
