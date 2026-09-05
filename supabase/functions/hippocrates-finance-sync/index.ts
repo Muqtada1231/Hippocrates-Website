@@ -27,7 +27,14 @@ const CORS = {
 const WEBHOOK_URL = Deno.env.get('HIPPO_GOOGLE_SHEETS_WEBHOOK_URL') ?? '';
 const WEBHOOK_SECRET = Deno.env.get('HIPPO_WEBHOOK_SECRET') ?? '';
 const PAYMENT_METHOD = Deno.env.get('HIPPO_FINANCE_PAYMENT_METHOD') ?? 'SuperQi';
-const WEBHOOK_TIMEOUT_MS = 25000;
+/* مهلة النداء تختلف حسب حجم الشغل عند Apps Script.
+   بيع واحد خفيف؛ الكتالوك كامل (23 كورس + 9 بكجات) ياخذ ~24 ثانية عملياً،
+   فمهلة الـ 25 ثانية الموحّدة السابقة كانت تقطع النداء بالضبط عند الحافة
+   وترجع "The signal has been aborted" قبل ما يرد السكربت.
+   نبقي الحماية موجودة — بس نعطي الكتالوك مجالاً معقولاً، وتحت سقف مدة
+   طلب Edge Function (150 ثانية) بهامش واسع. */
+const WEBHOOK_TIMEOUT_MS = 25000;          // الافتراضي: مزامنة بيع مؤكد
+const CATALOG_TIMEOUT_MS = 90000;          // مزامنة الكتالوك كاملاً
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_KEY =
@@ -89,9 +96,10 @@ async function authorize(req: Request) {
 }
 
 /* ── نداء الويبهوك ─────────────────────────────────────────────────────────── */
-async function callWebhook(payload: Json) {
+async function callWebhook(payload: Json, timeoutMs = WEBHOOK_TIMEOUT_MS) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), WEBHOOK_TIMEOUT_MS);
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, timeoutMs);
   try {
     const res = await fetch(WEBHOOK_URL, {
       method: 'POST',
@@ -105,7 +113,12 @@ async function callWebhook(payload: Json) {
     try { body = text ? JSON.parse(text) : null; } catch { /* HTML صفحة خطأ من جوجل */ }
     return { httpStatus: res.status, body, raw: text };
   } catch (e) {
-    return { httpStatus: 0, body: null, raw: '', networkError: String((e as Error)?.message ?? e) };
+    /* نسمّي انقطاع المهلة باسمه، حتى ما يضيع وقت التشخيص مرة ثانية على
+       رسالة AbortError الغامضة. */
+    const networkError = timedOut
+      ? `انتهت المهلة: الويبهوك ما رد خلال ${Math.round(timeoutMs / 1000)} ثانية.`
+      : String((e as Error)?.message ?? e);
+    return { httpStatus: 0, body: null, raw: '', networkError, timedOut };
   } finally {
     clearTimeout(timer);
   }
@@ -472,7 +485,7 @@ async function syncCatalog(actorEmail: string) {
     action: 'sync_catalog',
     syncedAt: new Date().toISOString(),
     courses, packages, packageComponents,
-  });
+  }, CATALOG_TIMEOUT_MS);
   const outcome = readOutcome(res);
   const issues = mappingIssues(res.body);
 
