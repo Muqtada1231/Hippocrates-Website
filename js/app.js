@@ -194,6 +194,40 @@
 
   function H() { return window.HIPPO; }
 
+  /* Radiology stays a package in the catalog, cart, order, and finance paths.
+     This projection changes storefront placement only, for both the built-in
+     fallback catalog and the live Supabase catalog loaded after first paint. */
+  function storefrontCourses(h) {
+    var list = h.COURSES.map(function (c) {
+      if (c.id !== 'radio-theory' && c.id !== 'radio-prac') return c;
+      return Object.assign({}, c, { stage: 5, stages: [5] });
+    });
+    var p = h.packageById('radiology');
+    if (!p || p.enabled === false) return list;
+    var theory = h.courseById('radio-theory');
+    var practical = h.courseById('radio-prac');
+    var original = (theory ? theory.price : 0) + (practical ? practical.price : 0);
+    list.push({
+      id: p.id,
+      title: 'Radiology — Theory + Practical',
+      titleAr: 'الأشعة — نظري + عملي',
+      lect: (theory && theory.lect) || (practical && practical.lect) || 'asal',
+      stage: 5,
+      stages: [5],
+      price: p.price,
+      originalPrice: p.originalPrice != null ? p.originalPrice : original,
+      tags: [],
+      badge: 'tp',
+      includes: ['theory', 'practical'],
+      cartType: 'package'
+    });
+    return list;
+  }
+
+  function storefrontPackages(h) {
+    return h.PACKAGES.filter(function (p) { return p.id !== 'radiology'; });
+  }
+
   /* ── toast ── */
   function flash(kind) {
     var t = COPY[state.lang];
@@ -363,10 +397,12 @@
     var h = H();
     var t = COPY[state.lang];
     var ar = state.lang === 'ar';
+    var displayCourses = storefrontCourses(h);
+    var displayPackages = storefrontPackages(h);
     stageGrid.innerHTML = h.STAGES.map(function (s) {
       var on = s.id === state.stage;
-      var n = h.COURSES.filter(function (c) { return c.enabled !== false && h.inStage(c, s.id); }).length;
-      var np = h.PACKAGES.filter(function (p) { return p.enabled !== false && p.stage === s.id; }).length;
+      var n = displayCourses.filter(function (c) { return c.enabled !== false && h.inStage(c, s.id); }).length;
+      var np = displayPackages.filter(function (p) { return p.enabled !== false && p.stage === s.id; }).length;
       var pulse = on ? '#B08D57' : 'rgba(14,116,144,.35)';
       return (
         '<button type="button" class="hip-stage' + (on ? ' active' : '') + '" data-stage-id="' + s.id + '" aria-pressed="' + on + '">' +
@@ -419,7 +455,7 @@
     var stage = state.stage;
     var filter = state.filter;
 
-    var list = h.COURSES.filter(function (c) {
+    var list = storefrontCourses(h).filter(function (c) {
       if (c.enabled === false) return false;
       if (stage && !h.inStage(c, stage)) return false;
       return filter === 'all' || (c.tags || []).indexOf(filter) >= 0;
@@ -427,7 +463,7 @@
     /* الأعلى سعراً أولاً — والمتساوية تبقى بترتيب الكتالوك (الفرز ثابت) */
     list.sort(function (a, b) { return b.price - a.price; });
     var active = h.STAGES.filter(function (s) { return s.id === stage; })[0];
-    var stagePkgs = stage ? h.PACKAGES.filter(function (p) { return p.enabled !== false && p.stage === stage; }) : [];
+    var stagePkgs = stage ? storefrontPackages(h).filter(function (p) { return p.enabled !== false && p.stage === stage; }) : [];
 
     activeHeading.textContent = active ? t.heading(ar ? active.name : active.nameEn) : t.allCourses;
     activeCount.textContent = t.count(list.length);
@@ -445,7 +481,8 @@
       var cm = h.courseMath(c);
       var badge = c.badge && h.BADGES[c.badge] ? (ar ? h.BADGES[c.badge].ar : h.BADGES[c.badge].en) : '';
       var items = (c.includes || []).concat(['qbank']).map(function (k) { return ar ? h.INC[k].ar : h.INC[k].en; });
-      var inCart = h.inCart('course', c.id);
+      var cartType = c.cartType || 'course';
+      var inCart = h.inCart(cartType, c.id);
       var avatar = L.photo
         ? '<img src="' + L.photo + '" alt="' + esc(ar ? L.ar : L.en) + '" loading="lazy" class="hip-course-avatar-img">'
         : '<span class="hip-course-avatar">' + esc(h.initials(L.en)) + '</span>';
@@ -473,7 +510,7 @@
               '<span class="hip-course-price mono">' + esc(h.money(c.price)) + '</span>' +
               (cm.save > 0 ? '<span class="hip-course-oldprice mono">' + esc(h.money(cm.original)) + '</span><span class="hip-course-pct">' + esc(t.off(cm.pct)) + '</span>' : '') +
             '</div>' +
-            '<button type="button" class="btn hip-course-cta' + (inCart ? ' in-cart' : '') + '" data-add-course="' + c.id + '">' + (inCart ? t.inCart : t.addToCart) + '</button>' +
+            '<button type="button" class="btn hip-course-cta' + (inCart ? ' in-cart' : '') + '" data-add-course="' + c.id + '" data-add-type="' + cartType + '">' + (inCart ? t.inCart : t.addToCart) + '</button>' +
           '</div>' +
         '</article>'
       );
@@ -481,7 +518,7 @@
 
     Array.prototype.forEach.call(courseGrid.querySelectorAll('[data-add-course]'), function (btn) {
       btn.addEventListener('click', function () {
-        addItem('course', btn.getAttribute('data-add-course'));
+        addItem(btn.getAttribute('data-add-type') || 'course', btn.getAttribute('data-add-course'));
       });
     });
   }
@@ -492,7 +529,7 @@
     var t = COPY[state.lang];
     var ar = state.lang === 'ar';
 
-    var vals = h.PACKAGES.filter(function (p) { return p.enabled !== false; }).map(function (p) {
+    var vals = storefrontPackages(h).filter(function (p) { return p.enabled !== false; }).map(function (p) {
       var m = h.pkgMath(p);
       return {
         raw: p, id: p.id,
