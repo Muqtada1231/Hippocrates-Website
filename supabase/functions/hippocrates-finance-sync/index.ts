@@ -443,13 +443,17 @@ async function syncOrder(orderId: string, actorEmail: string) {
   const scrubbed = { ...payload };
   delete (scrubbed as Json).secret;                 // احتياط: السر ما ينضاف هنا أصلاً
 
+  /* نفس معاملة sync_catalog بالضبط: الرد الخام كما وصل، بلا إعادة بناء ولا
+     تقليص، وبمساحة احتياط أوسع للنص غير الـ JSON. */
+  const rawResponse = (scrubSecrets(res.body) ?? { raw: (res.raw || '').slice(0, 4000) }) as Json;
+
   await db.from('finance_sync_log').insert({
     order_id: order.id,
     action: 'confirm_sale',
     ok: success,
     http_status: res.httpStatus,
     request: scrubbed,
-    response: (res.body ?? { raw: (res.raw || '').slice(0, 2000) }) as Json,
+    response: rawResponse,
     error: success ? null : (outcome.message || outcome.code || 'unknown'),
   });
 
@@ -465,6 +469,8 @@ async function syncOrder(orderId: string, actorEmail: string) {
     status: success ? 'synced' : 'sync_error',
     syncedAt: success ? now : null,
     code: outcome.code || null,
+    webhookResponse: rawResponse,   // الرد الخام كامل للمتصل — مثل sync_catalog
+    httpStatus: res.httpStatus,
     message: success
       ? (duplicate ? 'الطلب كان مسجّلاً بالحسابات — ما انضاف تكرار.' : 'تمت المزامنة.')
       : (outcome.message || outcome.code || 'فشل غير معروف'),
