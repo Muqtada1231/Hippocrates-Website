@@ -866,7 +866,7 @@
     var busy = !!state.syncingOrders[o.id];
     var canRetry = !!p.confirmPayments && !busy && (status === 'sync_error' || status === 'not_synced');
     var canReconcile = !!p.confirmPayments && !busy &&
-      (status === 'sync_unknown' || status === 'syncing');
+      (status === 'sync_unknown' || status === 'syncing' || status === 'sync_error');
 
     return '<div class="ad-finance">' +
       '<div class="ad-finance-head">' + esc(t.finTitle) + '</div>' +
