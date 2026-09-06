@@ -172,6 +172,9 @@
 
   function financePing() { return callFinance({ action: 'ping' }); }
   function syncOrderFinance(orderId) { return callFinance({ action: 'sync_order', orderId: orderId }); }
+  function reconcileOrderFinance(orderId) {
+    return callFinance({ action: 'reconcile_order', orderId: orderId });
+  }
   function syncCatalogFinance() { return callFinance({ action: 'sync_catalog' }); }
 
   function catalogSyncState() {
@@ -225,6 +228,7 @@
     promos: promos, createPromo: createPromo, updatePromo: updatePromo,
     deletePromo: deletePromo, setPromoProducts: setPromoProducts,
     financePing: financePing, syncOrderFinance: syncOrderFinance,
+    reconcileOrderFinance: reconcileOrderFinance,
     syncCatalogFinance: syncCatalogFinance, catalogSyncState: catalogSyncState,
     courses: courses, updateCourse: updateCourse, lecturers: lecturers,
     packages: packages, updatePackage: updatePackage,

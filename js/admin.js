@@ -54,8 +54,10 @@
       errSave: 'تعذر الحفظ', errLoad: 'تعذر تحميل البيانات', errCode: 'أدخل كوداً وقيمة صحيحة',
       ownerRole: 'المالك', staffRole: 'فريق الدعم',
       finTitle: 'الحسابات', finPayment: 'الدفع', finSync: 'مزامنة الحسابات', finAt: 'وقت المزامنة',
-      fsNot: 'غير مزامن', fsSyncing: 'جاري المزامنة…', fsSynced: 'مزامن', fsError: 'خطأ بالمزامنة',
+      fsNot: 'غير مزامن', fsSyncing: 'جاري المزامنة…', fsSynced: 'مزامن',
+      fsError: 'خطأ بالمزامنة', fsUnknown: 'النتيجة غير معروفة',
       retrySync: 'إعادة المزامنة المالية', syncingNow: 'جاري…',
+      reconcileSync: 'فحص حالة الحسابات',
       syncCatalogBtn: 'مزامنة الكتالوك مع الحسابات', lastSync: 'آخر مزامنة',
       csNot: 'لم تتم بعد', csSynced: 'مكتملة', csPartial: 'ناقصة', csFailed: 'فشلت', csSyncing: 'جارية…',
       syncIssues: 'منتجات لم يتم ربطها بنظام الحسابات:',
@@ -110,8 +112,10 @@
       errSave: 'Could not save', errLoad: 'Could not load data', errCode: 'Enter a valid code and value',
       ownerRole: 'Owner', staffRole: 'Support staff',
       finTitle: 'Finance', finPayment: 'Payment', finSync: 'Finance sync', finAt: 'Synced at',
-      fsNot: 'Not synced', fsSyncing: 'Syncing…', fsSynced: 'Synced', fsError: 'Sync error',
+      fsNot: 'Not synced', fsSyncing: 'Syncing…', fsSynced: 'Synced',
+      fsError: 'Sync error', fsUnknown: 'Outcome unknown',
       retrySync: 'Retry finance sync', syncingNow: 'Working…',
+      reconcileSync: 'Check finance status',
       syncCatalogBtn: 'Sync catalog to finance', lastSync: 'Last sync',
       csNot: 'Never', csSynced: 'Synced', csPartial: 'Partial', csFailed: 'Failed', csSyncing: 'Syncing…',
       syncIssues: 'Products that could not be mapped in the finance system:',
@@ -332,6 +336,14 @@
           render();
           return toast(res.message || t.fsSynced);
         }
+        if (res && (res.status === 'sync_unknown' || res.status === 'syncing')) {
+          patchOrder(id, {
+            finance_sync_status: res.status,
+            finance_sync_error: res.message || t.fsUnknown
+          });
+          render();
+          return toast(res.message || t.fsUnknown);
+        }
         patchOrder(id, {
           finance_sync_status: 'sync_error',
           finance_sync_error: (res && res.message) || t.fsError
@@ -341,9 +353,43 @@
       })
       .catch(function (e) {
         delete state.syncingOrders[id];
-        patchOrder(id, { finance_sync_status: 'sync_error', finance_sync_error: (e && e.message) || '' });
+        patchOrder(id, {
+          finance_sync_status: 'sync_unknown',
+          finance_sync_error: (e && e.message) || t.fsUnknown
+        });
         render();
-        errToast(t.fsError, e);
+        errToast(t.fsUnknown, e);
+      });
+  }
+
+  function reconcileFinance(id) {
+    var t = T();
+    state.syncingOrders[id] = true;
+    render();
+
+    window.HIPPO_ADMIN.reconcileOrderFinance(id)
+      .then(function (res) {
+        delete state.syncingOrders[id];
+        patchOrder(id, {
+          finance_sync_status: (res && res.status) || 'sync_unknown',
+          finance_synced_at: res && res.ok
+            ? (res.syncedAt || new Date().toISOString())
+            : undefined,
+          finance_sync_error: res && res.ok
+            ? null
+            : ((res && res.message) || t.fsUnknown)
+        });
+        render();
+        toast((res && res.message) || (res && res.ok ? t.fsSynced : t.fsUnknown));
+      })
+      .catch(function (e) {
+        delete state.syncingOrders[id];
+        patchOrder(id, {
+          finance_sync_status: 'sync_unknown',
+          finance_sync_error: (e && e.message) || t.fsUnknown
+        });
+        render();
+        errToast(t.fsUnknown, e);
       });
   }
 
@@ -374,6 +420,7 @@
     var t = T();
     if (status === 'synced') return t.fsSynced;
     if (status === 'syncing') return t.fsSyncing;
+    if (status === 'sync_unknown') return t.fsUnknown;
     if (status === 'sync_error') return t.fsError;
     return t.fsNot;
   }
@@ -806,6 +853,7 @@
     wire('[data-reject]', 'data-reject', function (id) { setStatus(id, 'rejected'); });
     wire('[data-reopen]', 'data-reopen', function (id) { setStatus(id, 'pending'); });
     wire('[data-resync]', 'data-resync', function (id) { syncFinance(id, false); });
+    wire('[data-reconcile]', 'data-reconcile', function (id) { reconcileFinance(id); });
   }
 
   /* قسم الحسابات داخل بطاقة الطلب — يظهر للطلبات المؤكدة فقط، لأن ما قبل
@@ -815,8 +863,10 @@
     var t = T();
     var p = perms();
     var status = o.finance_sync_status || 'not_synced';
-    var busy = !!state.syncingOrders[o.id] || status === 'syncing';
+    var busy = !!state.syncingOrders[o.id];
     var canRetry = !!p.confirmPayments && !busy && (status === 'sync_error' || status === 'not_synced');
+    var canReconcile = !!p.confirmPayments && !busy &&
+      (status === 'sync_unknown' || status === 'syncing');
 
     return '<div class="ad-finance">' +
       '<div class="ad-finance-head">' + esc(t.finTitle) + '</div>' +
@@ -828,12 +878,16 @@
         '<div><span class="ad-meta-label">' + esc(t.finAt) + '</span>' +
           '<span class="ad-meta-value">' + esc(fmtDateTime(o.finance_synced_at)) + '</span></div>' +
       '</div>' +
-      (status === 'sync_error' && o.finance_sync_error
+      ((status === 'sync_error' || status === 'sync_unknown') && o.finance_sync_error
         ? '<p class="ad-finance-error">' + esc(o.finance_sync_error) + '</p>'
         : '') +
       (canRetry
         ? '<button class="ad-btn-outline ad-btn-resync" type="button" data-resync="' + esc(o.id) + '">' +
             esc(t.retrySync) + '</button>'
+        : '') +
+      (canReconcile
+        ? '<button class="ad-btn-outline ad-btn-resync" type="button" data-reconcile="' + esc(o.id) + '">' +
+            esc(t.reconcileSync) + '</button>'
         : '') +
     '</div>';
   }

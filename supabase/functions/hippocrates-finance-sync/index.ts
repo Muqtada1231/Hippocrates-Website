@@ -27,14 +27,12 @@ const CORS = {
 const WEBHOOK_URL = Deno.env.get('HIPPO_GOOGLE_SHEETS_WEBHOOK_URL') ?? '';
 const WEBHOOK_SECRET = Deno.env.get('HIPPO_WEBHOOK_SECRET') ?? '';
 const PAYMENT_METHOD = Deno.env.get('HIPPO_FINANCE_PAYMENT_METHOD') ?? 'SuperQi';
-/* مهلة النداء تختلف حسب حجم الشغل عند Apps Script.
-   بيع واحد خفيف؛ الكتالوك كامل (23 كورس + 9 بكجات) ياخذ ~24 ثانية عملياً،
-   فمهلة الـ 25 ثانية الموحّدة السابقة كانت تقطع النداء بالضبط عند الحافة
-   وترجع "The signal has been aborted" قبل ما يرد السكربت.
-   نبقي الحماية موجودة — بس نعطي الكتالوك مجالاً معقولاً، وتحت سقف مدة
-   طلب Edge Function (150 ثانية) بهامش واسع. */
-const WEBHOOK_TIMEOUT_MS = 25000;          // الافتراضي: مزامنة بيع مؤكد
-const CATALOG_TIMEOUT_MS = 90000;          // مزامنة الكتالوك كاملاً
+/* HIP-128 completed in Apps Script after 28.3 seconds. The former 25-second
+   caller timeout therefore reported failure while the write continued.
+   confirm_sale gets a bounded 60-second window; catalog keeps 90 seconds. */
+const CONFIRM_SALE_TIMEOUT_MS = 60000;
+const STATUS_TIMEOUT_MS = 25000;
+const CATALOG_TIMEOUT_MS = 90000;
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_KEY =
@@ -79,6 +77,14 @@ const CONTENT_ONLY_PACKAGES = new Set(['radiology']);
 
 type Json = Record<string, unknown>;
 
+type WebhookCallResult = {
+  httpStatus: number;
+  body: unknown;
+  raw: string;
+  networkError?: string;
+  timedOut?: boolean;
+};
+
 function json(body: Json, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -121,7 +127,7 @@ async function authorize(req: Request) {
 }
 
 /* ── نداء الويبهوك ─────────────────────────────────────────────────────────── */
-async function callWebhook(payload: Json, timeoutMs = WEBHOOK_TIMEOUT_MS) {
+async function callWebhook(payload: Json, timeoutMs: number): Promise<WebhookCallResult> {
   const ctrl = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, timeoutMs);
@@ -150,25 +156,65 @@ async function callWebhook(payload: Json, timeoutMs = WEBHOOK_TIMEOUT_MS) {
 }
 
 /* HTTP 200 لحاله ما يكفي — لازم نقرأ الجسم (§25) */
-function readOutcome(r: { httpStatus: number; body: unknown; raw: string; networkError?: string }) {
-  if (r.networkError) return { ok: false, code: 'NETWORK_ERROR', message: r.networkError };
+function readOutcome(r: WebhookCallResult) {
+  if (r.timedOut) {
+    return {
+      ok: false,
+      unknown: true,
+      code: 'WEBHOOK_TIMEOUT_UNKNOWN',
+      message: 'انتهت مهلة الاتصال، لكن Apps Script قد يكون أكمل العملية. لا تعِد الإرسال؛ افحص حالة الطلب بالحسابات.',
+    };
+  }
+  if (r.networkError) {
+    return { ok: false, unknown: true, code: 'NETWORK_ERROR', message: r.networkError };
+  }
+
+  const structuredBody = r.body !== null && typeof r.body === 'object'
+    ? r.body as Json
+    : null;
+  const definitive = structuredBody !== null &&
+    (typeof structuredBody.success === 'boolean' || typeof structuredBody.ok === 'boolean');
+
   if (r.httpStatus < 200 || r.httpStatus >= 300) {
-    return { ok: false, code: 'HTTP_' + r.httpStatus, message: (r.raw || '').slice(0, 500) };
+    if (definitive) {
+      const b = structuredBody as Json;
+      const ok = b.success === true || (b.success === undefined && b.ok === true);
+      const message =
+        (b.message as string) ?? (b.error as string) ?? (b.reason as string) ?? (b.code as string) ?? '';
+      const code = (b.code as string) ?? (b.errorCode as string) ?? (b.error as string) ?? '';
+      return { ok, unknown: false, code, message, body: b };
+    }
+    return {
+      ok: false,
+      unknown: true,
+      code: 'HTTP_' + r.httpStatus,
+      message: (r.raw || '').slice(0, 500),
+    };
   }
   if (r.body === null || typeof r.body !== 'object') {
     /* رد مو JSON = غالباً صفحة تسجيل دخول جوجل أو خطأ سكربت */
     return {
       ok: false,
+      unknown: true,
       code: 'BAD_RESPONSE',
       message: 'الويبهوك رجّع رداً غير JSON. تأكد أن النشر "Anyone" وأن الرابط /exec صحيح. ' + (r.raw || '').slice(0, 300),
     };
   }
   const b = r.body as Json;
+  if (!definitive) {
+    return {
+      ok: false,
+      unknown: true,
+      code: 'BAD_RESPONSE',
+      message: 'الويبهوك رجّع JSON بدون نتيجة success/ok مؤكدة.',
+      body: b,
+    };
+  }
   const ok = b.success === true || (b.success === undefined && b.ok === true);
   const message =
     (b.message as string) ?? (b.error as string) ?? (b.reason as string) ?? (b.code as string) ?? '';
   const code = (b.code as string) ?? (b.errorCode as string) ?? (b.error as string) ?? '';
-  return { ok, code, message, body: b };
+  return { ok, unknown: false, code, message, body: b };
 }
 
 /* لو رجّع الويبهوك مفتاحاً اسمه سر/توكن لأي سبب، ما نخزنه ولا نرجّعه.
@@ -283,6 +329,110 @@ function allocateDiscount(prices: number[], totalToRemove: number): number[] {
   return out;
 }
 
+/* ── فحص بيع موجود بالحسابات — قراءة فقط، بلا confirm_sale ─────────────────── */
+async function checkSaleStatus(websiteOrderId: string, expectedSubscriptionCount: number) {
+  const res = await callWebhook({
+    action: 'get_sale_sync_status',
+    websiteOrderId,
+    expectedSubscriptionCount,
+  }, STATUS_TIMEOUT_MS);
+
+  const outcome = readOutcome(res);
+  const body = res.body !== null && typeof res.body === 'object'
+    ? res.body as Json
+    : {};
+
+  return {
+    res,
+    outcome,
+    body,
+    state: String(body.state ?? ''),
+    synced: outcome.ok && body.synced === true,
+    transactionIds: Array.isArray(body.transactionIds)
+      ? body.transactionIds.map(String)
+      : [],
+    subscriptionIds: Array.isArray(body.subscriptionIds)
+      ? body.subscriptionIds.map(String)
+      : [],
+  };
+}
+
+async function reconcileOrder(orderId: string, actorEmail: string) {
+  const db = admin();
+  const { data: order, error } = await db
+    .from('orders')
+    .select('id, order_no, status, finance_synced_at, order_items(id)')
+    .eq('id', orderId)
+    .maybeSingle();
+
+  if (error) return json({ ok: false, key: 'load-failed', message: error.message }, 500);
+  if (!order) return json({ ok: false, key: 'not-found', message: 'الطلب غير موجود.' }, 404);
+  if (order.status !== 'confirmed') {
+    return json({ ok: false, key: 'not-confirmed', message: 'الفحص المالي متاح للطلبات المؤكدة فقط.' }, 409);
+  }
+
+  const expectedSubscriptionCount = Array.isArray(order.order_items)
+    ? order.order_items.length
+    : 0;
+  if (!expectedSubscriptionCount) {
+    return json({ ok: false, key: 'no-items', message: 'الطلب بدون بنود.' }, 409);
+  }
+
+  const check = await checkSaleStatus(order.id, expectedSubscriptionCount);
+  const notFound = check.outcome.ok && check.state === 'not_found';
+  const nextStatus = check.synced
+    ? 'synced'
+    : (notFound ? 'not_synced' : 'sync_unknown');
+  const now = new Date().toISOString();
+  const message = check.synced
+    ? 'تم العثور على المعاملة والاشتراكات الموجودة وتأكيد المزامنة بدون إنشاء سجلات جديدة.'
+    : notFound
+      ? 'لم توجد سجلات مالية لهذا الطلب. لم يتم تشغيل confirm_sale.'
+      : 'النتيجة غير مكتملة أو تعذر فحصها. لم يتم تشغيل confirm_sale.';
+
+  const rawResponse = (
+    scrubSecrets(check.res.body) ??
+    { raw: (check.res.raw || '').slice(0, 4000) }
+  ) as Json;
+
+  const { error: logError } = await db.from('finance_sync_log').insert({
+    order_id: order.id,
+    action: 'reconcile_sale',
+    ok: check.synced,
+    http_status: check.res.httpStatus,
+    request: {
+      action: 'get_sale_sync_status',
+      websiteOrderId: order.id,
+      expectedSubscriptionCount,
+    },
+    response: rawResponse,
+    error: check.synced ? null : (check.outcome.message || message),
+  });
+  if (logError) return json({ ok: false, key: 'log-failed', message: logError.message }, 500);
+
+  const { error: updateError } = await db.from('orders').update({
+    finance_sync_status: nextStatus,
+    finance_synced_at: check.synced ? now : order.finance_synced_at,
+    finance_sync_error: check.synced ? null : message,
+  }).eq('id', order.id);
+  if (updateError) return json({ ok: false, key: 'update-failed', message: updateError.message }, 500);
+
+  // Every completed reconciliation returns HTTP 200. `status` is authoritative.
+  return json({
+    ok: check.synced,
+    reconciled: true,
+    confirmSaleCalled: false,
+    status: nextStatus,
+    syncedAt: check.synced ? now : null,
+    websiteOrderId: order.id,
+    websiteOrderNo: order.order_no,
+    transactionIds: check.transactionIds,
+    subscriptionIds: check.subscriptionIds,
+    webhookResponse: rawResponse,
+    message,
+  });
+}
+
 /* ── ACTION: مزامنة بيع مؤكد ───────────────────────────────────────────────── */
 async function syncOrder(orderId: string, actorEmail: string) {
   const db = admin();
@@ -308,6 +458,18 @@ async function syncOrder(orderId: string, actorEmail: string) {
       status: 'synced', syncedAt: order.finance_synced_at,
       message: 'هذا الطلب مزامن أصلاً.',
     });
+  }
+
+  /* Unknown and in-progress outcomes may represent a still-running or already
+     completed Apps Script execution. Never send confirm_sale from either state. */
+  if (order.finance_sync_status === 'sync_unknown' ||
+      order.finance_sync_status === 'syncing') {
+    return json({
+      ok: false,
+      key: 'reconciliation-required',
+      status: order.finance_sync_status,
+      message: 'لا يمكن إعادة confirm_sale من هذه الحالة. استخدم فحص حالة الحسابات أولاً.',
+    }, 409);
   }
 
   const items = (order.order_items ?? []) as Json[];
@@ -430,14 +592,23 @@ async function syncOrder(orderId: string, actorEmail: string) {
   };
 
   /* 7 — نداء واحد لكل طلب، فيه كل البنود (§14) */
-  const res = await callWebhook(payload);
+  const res = await callWebhook(payload, CONFIRM_SALE_TIMEOUT_MS);
   const outcome = readOutcome(res);
 
-  /* Apps Script يمنع تكرار نفس رقم الطلب. هذا مو فشل — معناه محفوظ أصلاً */
+  /* Duplicate alone does not prove that both records are complete. Verify the
+     existing rows read-only before treating it as a successful sync. */
   const duplicate =
     !outcome.ok && JSON.stringify(res.body ?? res.raw).includes('DUPLICATE_ORDER_ID');
 
-  const success = outcome.ok || duplicate;
+  const duplicateCheck = duplicate
+    ? await checkSaleStatus(order.id, items.length)
+    : null;
+  const duplicateConfirmed = !!duplicateCheck?.synced;
+  const success = outcome.ok || duplicateConfirmed;
+  const unknown = outcome.unknown === true || (duplicate && !duplicateConfirmed);
+  const finalStatus = success
+    ? 'synced'
+    : (unknown ? 'sync_unknown' : 'sync_error');
   const now = new Date().toISOString();
 
   const scrubbed = { ...payload };
@@ -445,7 +616,18 @@ async function syncOrder(orderId: string, actorEmail: string) {
 
   /* نفس معاملة sync_catalog بالضبط: الرد الخام كما وصل، بلا إعادة بناء ولا
      تقليص، وبمساحة احتياط أوسع للنص غير الـ JSON. */
-  const rawResponse = (scrubSecrets(res.body) ?? { raw: (res.raw || '').slice(0, 4000) }) as Json;
+  const confirmResponse = (
+    scrubSecrets(res.body) ?? { raw: (res.raw || '').slice(0, 4000) }
+  ) as Json;
+  const rawResponse = duplicateCheck
+    ? {
+        confirmSale: confirmResponse,
+        reconciliation: scrubSecrets(duplicateCheck.res.body),
+      }
+    : confirmResponse;
+  const failureMessage = unknown
+    ? 'UNKNOWN_OUTCOME — Apps Script قد يكون أكمل العملية. لا تعِد confirm_sale؛ استخدم المصالحة.'
+    : (outcome.message || outcome.code || 'unknown');
 
   await db.from('finance_sync_log').insert({
     order_id: order.id,
@@ -454,28 +636,29 @@ async function syncOrder(orderId: string, actorEmail: string) {
     http_status: res.httpStatus,
     request: scrubbed,
     response: rawResponse,
-    error: success ? null : (outcome.message || outcome.code || 'unknown'),
+    error: success ? null : failureMessage,
   });
 
   await db.from('orders').update({
-    finance_sync_status: success ? 'synced' : 'sync_error',
+    finance_sync_status: finalStatus,
     finance_synced_at: success ? now : order.finance_synced_at,
-    finance_sync_error: success ? null : ([outcome.code, outcome.message].filter(Boolean).join(' — ')).slice(0, 1000),
+    finance_sync_error: success ? null : failureMessage.slice(0, 1000),
   }).eq('id', order.id);
 
   return json({
     ok: success,
     duplicate,
-    status: success ? 'synced' : 'sync_error',
+    unknown,
+    status: finalStatus,
     syncedAt: success ? now : null,
-    code: outcome.code || null,
+    code: unknown ? 'UNKNOWN_OUTCOME' : (outcome.code || null),
     webhookResponse: rawResponse,   // الرد الخام كامل للمتصل — مثل sync_catalog
     httpStatus: res.httpStatus,
     message: success
-      ? (duplicate ? 'الطلب كان مسجّلاً بالحسابات — ما انضاف تكرار.' : 'تمت المزامنة.')
-      : (outcome.message || outcome.code || 'فشل غير معروف'),
+      ? (duplicateConfirmed ? 'تم التحقق من السجلات الموجودة — ما انضاف تكرار.' : 'تمت المزامنة.')
+      : failureMessage,
     by: actorEmail,
-  }, success ? 200 : 502);
+  }, success ? 200 : (unknown ? 202 : 502));
 }
 
 /* ── ACTION: مزامنة الكتالوك ───────────────────────────────────────────────── */
@@ -740,7 +923,8 @@ Deno.serve(async (req) => {
       'invalid-token': 'الجلسة منتهية. سجّل دخولك من جديد.',
       'not-admin': 'حسابك ليس ضمن قائمة المدراء.',
     };
-    return json({ ok: false, key: auth.error, message: map[auth.error] }, 403);
+    const authError = String(auth.error ?? 'invalid-token');
+    return json({ ok: false, key: authError, message: map[authError] ?? map['invalid-token'] }, 403);
   }
 
   let body: Json = {};
@@ -769,6 +953,13 @@ Deno.serve(async (req) => {
     const orderId = String(body.orderId ?? '');
     if (!orderId) return json({ ok: false, message: 'orderId مطلوب.' }, 400);
     return await syncOrder(orderId, auth.admin.email);
+  }
+
+  if (action === 'reconcile_order') {
+    if (!auth.admin.canConfirm) return json({ ok: false, message: 'ما عندك صلاحية تأكيد الدفع.' }, 403);
+    const orderId = String(body.orderId ?? '');
+    if (!orderId) return json({ ok: false, message: 'orderId مطلوب.' }, 400);
+    return await reconcileOrder(orderId, auth.admin.email);
   }
 
   if (action === 'sync_catalog') {
