@@ -64,6 +64,19 @@ const REFERENCE_ITEM_NAMES: Record<string, string> = {
   'ref-peds': 'Pediatrics',
 };
 
+/* كورس مجمّع (عنده covers) هو بكج مالياً، رغم إنه صف بجدول courses.
+   ما ننقله بـ Supabase — الواجهة والسلة والـ upsell كلها مبنية على كونه
+   كورساً. التحويل بطبقة النقل وحدها. اسمه داخل بكج آخر يعرفه نظام
+   الحسابات بصيغته الخاصة. */
+const NESTED_BUNDLE_NAMES: Record<string, string> = {
+  'derm-full': 'Dermatology (Theory + Summary)',
+};
+
+/* بكجات يملك نظام الحسابات توزيعها على مستوى البكج (Package Lecturer).
+   مكوّناتها تُرسل للتعريف بالمحتوى فقط — بلا أي حقل مبلغ إطلاقاً، ولا صفر:
+   الحقل يُحذف كلياً حتى ما ندهس توزيع الشيت. */
+const CONTENT_ONLY_PACKAGES = new Set(['radiology']);
+
 type Json = Record<string, unknown>;
 
 function json(body: Json, status = 200): Response {
@@ -348,6 +361,17 @@ async function syncOrder(orderId: string, actorEmail: string) {
     }
   }
 
+  /* الكورس المجمّع (derm-full) محفوظ بالطلب كـ course — وهذا مقصود، الواجهة
+     والسلة مبنية عليه. مالياً هو بكج: بند واحد بمعرّف بكج، وما ينفك لكورسين. */
+  const bundleSet = new Set<string>();
+  {
+    const { data: bundleRows } = await db.from('courses').select('key, covers');
+    for (const row of bundleRows ?? []) {
+      const covers = (row as Json).covers;
+      if (Array.isArray(covers) && covers.length) bundleSet.add(String((row as Json).key));
+    }
+  }
+
   const promoAlloc = allocateDiscount(prices, itemsSum - total);
   const paid = prices.map((p, i) => p - promoAlloc[i]);
 
@@ -390,12 +414,12 @@ async function syncOrder(orderId: string, actorEmail: string) {
     orderTotalIQD: total,
 
     items: items.map((it, i) => {
-      const isPackage = String(it.item_type) === 'package';
+      const asPackage = String(it.item_type) === 'package' || bundleSet.has(String(it.product_id));
       return {
         websiteProductId: it.product_id,
-        productType: isPackage ? 'Package' : 'Course',
-        websiteCourseId: isPackage ? null : it.product_id,
-        websitePackageId: isPackage ? it.product_id : null,
+        productType: asPackage ? 'Package' : 'Course',
+        websiteCourseId: asPackage ? null : it.product_id,
+        websitePackageId: asPackage ? it.product_id : null,
         productName: it.name ?? it.name_ar ?? '',
         productNameAr: it.name_ar ?? '',
         originalPriceIQD: originals[i],
@@ -469,7 +493,19 @@ async function syncCatalog(actorEmail: string) {
     lecturers.set(l.key as string, { en: (l.name_en as string) ?? '', ar: (l.name_ar as string) ?? '' });
   }
 
-  const courses = (coursesRes.data ?? []).map((c: Json) => {
+  /* كورس عنده covers = بكج مالياً، فيطلع من courses[] ويدخل packages[]. */
+  const bundleCourses = (coursesRes.data ?? []).filter(
+    (c: Json) => Array.isArray(c.covers) && (c.covers as unknown[]).length > 0,
+  );
+  const bundleKeys = new Set(bundleCourses.map((c: Json) => String(c.key)));
+
+  /* بكجات العرض فقط ما تروح للحسابات إطلاقاً: لا ككتالوك ولا كمكوّنات
+     ولا كمراجع. تبقى بـ Supabase وعلى الموقع كما هي. */
+  const nonCommercial = new Set(
+    (packagesRes.data ?? []).filter((p: Json) => p.purchasable === false).map((p: Json) => String(p.key)),
+  );
+
+  const courses = (coursesRes.data ?? []).filter((c: Json) => !bundleKeys.has(String(c.key))).map((c: Json) => {
     const l = lecturers.get(String(c.lecturer_key ?? '')) ?? { en: '', ar: '' };
     const stages = Array.isArray(c.stages) && (c.stages as unknown[]).length
       ? (c.stages as number[])
@@ -499,7 +535,7 @@ async function syncCatalog(actorEmail: string) {
      نضيف المفتاح الصحيح ونبقي `name` كما هو — إضافة مفتاح ما تكسر شي، وحذف
      مفتاح شغّال ممكن يكسر. القيمة نفسها من `packages.name` بـ Supabase،
      بلا أي اسم مكتوب يدوياً. */
-  const packages = (packagesRes.data ?? []).map((p: Json) => ({
+  const packages = (packagesRes.data ?? []).filter((p: Json) => !nonCommercial.has(String(p.key))).map((p: Json) => ({
     websitePackageId: p.key,                       // معرّف Supabase الحقيقي
     packageName: p.name ?? '',                     // ← المفتاح اللي يتوقعه Apps Script
     /* بكج العرض فقط: يبقى بالكتالوك للمرجع والتقارير، بس ما ينباع، وما
@@ -513,46 +549,93 @@ async function syncCatalog(actorEmail: string) {
     status: p.enabled ? 'Active' : 'Inactive',
     offerEligible: !!p.promo_enabled,
     updatedAt: p.updated_at ?? null,
-  }));
+  })).concat(
+    /* البكجات المجمّعة: بكج مالي كامل، بمعرّف الكورس الحقيقي نفسه.
+       ما نرسل له websiteCourseId إطلاقاً. */
+    bundleCourses.map((c: Json) => ({
+      websitePackageId: c.key,
+      packageName: c.title ?? '',
+      purchasable: c.enabled !== false,
+      commercialStatus: 'COMMERCIAL',
+      name: c.title ?? '',
+      nameAr: c.title_ar ?? '',
+      stage: (Array.isArray(c.stages) && (c.stages as number[]).length ? (c.stages as number[])[0] : c.stage) ?? null,
+      priceIQD: Number(c.price) || 0,
+      status: c.enabled ? 'Active' : 'Inactive',
+      offerEligible: false,
+      updatedAt: c.updated_at ?? null,
+    })),
+  );
 
   /* المكوّنات القياسية — كورس حقيقي داخل بكج. الشكل كما هو، ما ننزع منه مفتاحاً
      ولا نضيف componentType. أضفنا `approvedAllocationIQD` بجنب `allocationIQD`
      لأن عقد Apps Script المعتمد يسمّيه هيك؛ إضافة مفتاح ما تكسر قارئاً، ونفس
      القيمة بالضبط بالاثنين. */
+  /* بكجات يملك الشيت توزيعها على مستوى البكج: مكوّناتها للتعريف فقط.
+     البكج المجمّع (derm-full) منها بطبيعته — توزيعه ما ينكسر لكورسين. */
+  const contentOnly = new Set([...CONTENT_ONLY_PACKAGES, ...bundleKeys]);
+
   const standardComponents = (linksRes.data ?? [])
+    .filter((l: Json) =>
+      !nonCommercial.has(String(l.package_id)) &&   // بكج العرض فقط
+      !bundleKeys.has(String(l.course_id)))         // بكج مجمّع داخل بكج ← يروح مرجعاً
     .slice()
     .sort((a: Json, b: Json) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
     .map((l: Json) => {
-      const iqd = Number(l.allocation) || 0;
-      return {
+      const base = {
         websitePackageId: l.package_id,
         websiteCourseId: l.course_id,
-        approvedAllocationIQD: iqd,
-        allocationIQD: iqd,
         sortOrder: Number(l.sort_order) || 0,
+      };
+      /* حقول المبالغ تُحذف كلياً — مو صفراً — حتى ما ندهس توزيع الشيت */
+      if (contentOnly.has(String(l.package_id))) return base;
+      const iqd = Number(l.allocation) || 0;
+      return { ...base, approvedAllocationIQD: iqd, allocationIQD: iqd };
+    })
+    /* محتويات البكج المجمّع من covers: تعريف بالمحتوى فقط، بلا أي مبلغ */
+    .concat(
+      bundleCourses.flatMap((c: Json) =>
+        ((c.covers ?? []) as string[]).map((courseId, i) => ({
+          websitePackageId: String(c.key),
+          websiteCourseId: courseId,
+          sortOrder: (i + 1) * 10,
+        })),
+      ),
+    );
+
+  /* ── المكوّنات المرجعية ──────────────────────────────────────────────────
+     مصدران:
+       1) بكج مجمّع داخل بكج آخر (year5 ← derm-full): مو كورس مالياً، فما
+          نرسل له websiteCourseId. الاسم من جسر التسمية، والمبلغ حيّ من
+          package_courses.allocation.
+       2) بنود package_ref_items للبكجات التجارية.
+     البكجات غير التجارية مستبعدة من الاثنين. */
+  const referenceFallbacks: string[] = [];
+
+  const nestedBundleRefs = (linksRes.data ?? [])
+    .filter((l: Json) => bundleKeys.has(String(l.course_id)) && !nonCommercial.has(String(l.package_id)))
+    .slice()
+    .sort((a: Json, b: Json) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
+    .map((l: Json) => {
+      const key = String(l.course_id);
+      const mapped = NESTED_BUNDLE_NAMES[key];
+      if (!mapped) referenceFallbacks.push(key);
+      const fallback = bundleCourses.find((c: Json) => String(c.key) === key);
+      return {
+        componentType: 'reference',
+        websitePackageId: l.package_id,
+        referenceItemName: mapped ?? String(fallback?.title ?? key),
+        approvedAllocationIQD: Number(l.allocation) || 0,
       };
     });
 
-  /* بنود المحتوى المرجعي — بكج المرحلة السادسة. ما تنتمي لأي كورس، فما نرسل
-     لها websiteCourseId ولا نخترع معرّف كورس وهمي. الاسم من جسر ref_key،
-     والمبلغ ومعرّف البكج من Supabase مباشرة. */
-  /* البكجات غير القابلة للشراء ما ترسل مكوّنات توزيع إطلاقاً: قيمها المرجعية
-     للعرض، مو حصص محاضرين. إرسالها كان راح ينشئ صفوف توزيع لمنتج ما ينباع. */
-  const nonCommercial = new Set(
-    (packagesRes.data ?? []).filter((p: Json) => p.purchasable === false).map((p: Json) => String(p.key)),
-  );
-
-  const referenceFallbacks: string[] = [];
-  const referenceExcluded = (refsRes.data ?? []).filter((r: Json) => nonCommercial.has(String(r.package_id))).length;
-  const referenceComponents = (refsRes.data ?? [])
+  const refItemRefs = (refsRes.data ?? [])
     .filter((r: Json) => !nonCommercial.has(String(r.package_id)))
     .slice()
     .sort((a: Json, b: Json) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0))
     .map((r: Json) => {
       const refKey = String(r.ref_key ?? '');
       const mapped = REFERENCE_ITEM_NAMES[refKey];
-      /* بند جديد ما ننعرف اسمه بالحسابات: نرسله بعنوان الموقع بدل ما نُسقطه
-         بصمت ونضيّع توزيعه، ونبلّغ عنه بالرد حتى ينضاف للجسر. */
       if (!mapped) referenceFallbacks.push(refKey);
       return {
         componentType: 'reference',
@@ -561,6 +644,9 @@ async function syncCatalog(actorEmail: string) {
         approvedAllocationIQD: Number(r.allocation) || 0,
       };
     });
+
+  const referenceComponents = [...nestedBundleRefs, ...refItemRefs];
+  const referenceExcluded = (refsRes.data ?? []).filter((r: Json) => nonCommercial.has(String(r.package_id))).length;
 
   const packageComponents = [...standardComponents, ...referenceComponents];
 
@@ -616,6 +702,8 @@ async function syncCatalog(actorEmail: string) {
     packagesSent: packages.length,
     standardComponentsSent: standardComponents.length,
     referenceComponentsSent: referenceComponents.length,
+    bundlePackagesSent: [...bundleKeys],
+    excludedFromFinance: [...nonCommercial],
     componentsSent: packageComponents.length,
     referenceNameFallbacks: referenceFallbacks,
     nonCommercialPackages: [...nonCommercial],
