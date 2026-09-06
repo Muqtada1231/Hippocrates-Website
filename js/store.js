@@ -751,7 +751,7 @@
       swap(COURSES, courses);
       swap(PACKAGES, packages);
       lecturers.forEach(function (l) {
-        LECTURERS[l.key] = { en: l.name_en, ar: l.name_ar, photo: l.photo || '' };
+        LECTURERS[l.key] = { en: l.name_en, ar: l.name_ar, photo: l.photo || (l.key === 'aya' ? 'assets/lecturers/aya-thamer.png' : '') };
       });
       // bundles priced "instead of" their parts recompute from the live prices
       COURSES.forEach(function (c) {
