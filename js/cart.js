@@ -49,8 +49,9 @@
       checkoutTitle: 'معلومات الطالب',
       checkoutSub: 'نحتاج اسمك ومعرّفك بالتليكرام حتى نأكد الطلب ونرسل لك الكورسات.',
       fName: 'الاسم الكامل *', fTg: 'معرّف التليكرام *', fPhone: 'رقم الهاتف',
+      fEmail: 'البريد الإلكتروني', phEmail: 'example@gmail.com', errEmail: 'أدخل بريداً إلكترونياً صحيحاً',
       fUni: 'الجامعة / الكلية', fStage: 'المرحلة *', fNotes: 'ملاحظات (اختياري)',
-      phName: 'أحمد علي حسن', phUni: 'جامعة بغداد — كلية الطب', phNotes: 'أي شي تريد تذكره للدعم',
+      phName: 'أحمد علي حسن', phUni: 'كلية الطب - جامعة النهرين', phNotes: 'أي شي تريد تذكره للدعم',
       selectStage: 'اختر مرحلتك',
       errName: 'اكتب اسمك الكامل', errTg: 'اكتب معرّفك بالتليكرام', errStage: 'اختر مرحلتك',
       reviewCta: 'راجع الطلب', backToCart: 'رجوع للسلة',
@@ -61,7 +62,7 @@
       doneTitle: 'تم إنشاء فاتورتك بنجاح ✅',
       doneSub: 'لإكمال طلبك: حوّل المبلغ لرقم تحويل ابوقراط، احتفظ بالإيصال، ثم أرسل الفاتورة + الإيصال لفريق الدعم.',
       orderNo: 'رقم طلبك',
-      date: 'التاريخ', student: 'الطالب', tg: 'التليكرام', stage: 'المرحلة', phone: 'الهاتف', uni: 'الجامعة', notes: 'ملاحظات',
+      date: 'التاريخ', student: 'الطالب', tg: 'التليكرام', stage: 'المرحلة', phone: 'الهاتف', email: 'البريد', uni: 'الجامعة', notes: 'ملاحظات',
       orderStatus: 'حالة الطلب:', pending: 'بانتظار تأكيد الدفع',
       saveInvoice: 'حفظ صورة الفاتورة', saving: 'يتم إنشاء الصورة…',
       sendInvoice: 'إرسال الفاتورة ووصل الدفع للدعم',
@@ -137,8 +138,9 @@
       checkoutTitle: 'Student information',
       checkoutSub: 'We need your name and Telegram username to confirm the order and deliver your courses.',
       fName: 'Full name *', fTg: 'Telegram username *', fPhone: 'Phone number',
+      fEmail: 'Email Address', phEmail: 'example@gmail.com', errEmail: 'Enter a valid email address',
       fUni: 'University / College', fStage: 'Stage *', fNotes: 'Notes (optional)',
-      phName: 'Ahmed Ali Hassan', phUni: 'University of Baghdad — College of Medicine', phNotes: 'Anything support should know',
+      phName: 'Ahmed Ali Hassan', phUni: 'College of Medicine - Al-Nahrain University', phNotes: 'Anything support should know',
       selectStage: 'Select your stage',
       errName: 'Enter your full name', errTg: 'Enter your Telegram username', errStage: 'Select your stage',
       reviewCta: 'Review order', backToCart: 'Back to cart',
@@ -149,7 +151,7 @@
       doneTitle: 'Your invoice has been generated successfully ✅',
       doneSub: 'To complete your order: transfer the amount to the Hippocrates number, save your receipt, then send the invoice and the receipt to support.',
       orderNo: 'Your order number',
-      date: 'Date', student: 'Student', tg: 'Telegram', stage: 'Stage', phone: 'Phone', uni: 'University', notes: 'Notes',
+      date: 'Date', student: 'Student', tg: 'Telegram', stage: 'Stage', phone: 'Phone', email: 'Email', uni: 'University', notes: 'Notes',
       orderStatus: 'Order status:', pending: 'Pending verification',
       saveInvoice: 'Save invoice image', saving: 'Generating image…',
       sendInvoice: 'Send invoice & receipt to support',
@@ -188,7 +190,7 @@
   var state = {
     lang: 'ar', step: 'cart',
     open: {}, confirming: '', clearAsk: false,
-    form: { name: '', tg: '', phone: '', uni: '', stage: '', notes: '' },
+    form: { name: '', tg: '', phone: '', email: '', uni: '', stage: '', notes: '' },
     errors: {}, order: null, busy: false, hint: '', copied: false, copiedNum: false,
     promoInput: '', promoBusy: false, promoErr: '', placing: false, orderErr: ''
   };
@@ -563,7 +565,9 @@
     } else if (opts.type === 'textarea') {
       input = '<textarea data-field="' + key + '" rows="3" placeholder="' + esc(opts.placeholder || '') + '">' + val + '</textarea>';
     } else {
-      input = '<input data-field="' + key + '" type="text" dir="' + (opts.ltr ? 'ltr' : 'auto') + '" value="' + val + '" placeholder="' + esc(opts.placeholder || '') + '">';
+      input = '<input data-field="' + key + '" type="' + (opts.type === 'email' ? 'email' : 'text') + '"' +
+        (opts.type === 'email' ? ' inputmode="email" autocomplete="email" spellcheck="false"' : '') +
+        ' dir="' + (opts.ltr ? 'ltr' : 'auto') + '" value="' + val + '" placeholder="' + esc(opts.placeholder || '') + '">';
     }
     return (
       '<div class="hip-form-field' + (err ? ' error' : '') + (opts.full ? ' full' : '') + '">' +
@@ -583,6 +587,7 @@
       fieldRow('name', t.fName, { placeholder: t.phName }) +
       fieldRow('tg', t.fTg, { placeholder: '@username', ltr: true }) +
       fieldRow('phone', t.fPhone, { placeholder: '0770 000 0000', ltr: true }) +
+      fieldRow('email', t.fEmail, { placeholder: t.phEmail, ltr: true, type: 'email' }) +
       fieldRow('uni', t.fUni, { placeholder: t.phUni }) +
       fieldRow('stage', t.fStage, { type: 'select' }) +
       fieldRow('notes', t.fNotes, { type: 'textarea', placeholder: t.phNotes, full: true });
@@ -604,6 +609,10 @@
     if (!String(f.name).trim()) errors.name = t.errName;
     if (!String(f.tg).replace(/^@/, '').trim()) errors.tg = t.errTg;
     if (!f.stage) errors.stage = t.errStage;
+    /* البريد اختياري: ما نعترض على الفارغ إطلاقاً، ونتحقق من الصيغة فقط
+       إذا كتب الطالب شي. السيرفر يعيد نفس التحقق — هذا للراحة لا للأمان. */
+    var em = String(f.email || '').trim();
+    if (em && !/^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$/.test(em)) errors.email = t.errEmail;
     state.errors = errors;
     return Object.keys(errors).length === 0;
   }
@@ -640,6 +649,7 @@
       { label: t.tg, value: tgHandle() },
       { label: t.stage, value: stageLabel(f.stage) },
       { label: t.phone, value: String(f.phone).trim() },
+      { label: t.email, value: String(f.email).trim().toLowerCase() },
       { label: t.uni, value: String(f.uni).trim() },
       { label: t.notes, value: String(f.notes).trim() }
     ].filter(function (r) { return !!r.value; });
@@ -666,6 +676,7 @@
     renderReviewSummary();
     h.createOrder({
       name: String(f.name).trim(), telegram: tgHandle(), phone: String(f.phone).trim(),
+      email: String(f.email).trim().toLowerCase(),
       university: String(f.uni).trim(), stage: f.stage, notes: String(f.notes).trim()
     }).then(function (res) {
       if (!res || !res.ok) {

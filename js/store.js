@@ -643,7 +643,12 @@
   function createOrder(student) {
     var promo = getPromo();
     var payload = {
-      student: { name: student.name, telegram: student.telegram, stage: student.stage },
+      student: {
+        name: student.name, telegram: student.telegram, stage: student.stage,
+        /* الهاتف والبريد اختياريان. السيرفر هو اللي ينظّفهما ويتحقق منهما —
+           هنا نمرّرهما فقط. البريد يُوحَّد لحروف صغيرة عند الحفظ بالسيرفر. */
+        phone: student.phone || '', email: student.email || ''
+      },
       items: cartPayload(),
       code: promo ? promo.code : null
     };

@@ -563,8 +563,11 @@ async function syncOrder(orderId: string, actorEmail: string) {
       fullName: order.student_name ?? '',
       stage: order.student_stage ?? '',
       telegram: tg ? '@' + tg : '',
-      phone: '',
-      email: '',
+      /* كانا مثبّتين فاضيين لأن الجدول ما كان يحتوي العمودين. صارا يُقرآن
+         من الطلب نفسه — قيمة وقت الشراء، مو من أي مكان آخر. الفارغ يُرسل
+         كنص فارغ حتى ما يدهس قيمة موجودة بشيت الطلاب. */
+      phone: order.student_phone ?? '',
+      email: order.student_email ?? '',
     },
 
     payment: {
