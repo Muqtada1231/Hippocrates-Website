@@ -48,7 +48,6 @@
       lecturersTitle: 'المحاضرون',
       lecturersHint: 'كل مادة عندها محاضر مسؤول عنها — طبيب متخرّج بمعدل متميز وله خبرة فعلية بالشرح والتلخيص. شوف ملفه التعريفي قبل ما تسجّل.',
       lecturersCta: 'شوف كل المحاضرين وملفاتهم',
-      lecturersNote: '17 محاضر · 23 كورس طبي',
       fPackages: 'الباقات',
       viewCourse: 'شوف الكورس',
       emptyStage: 'كورسات هذه المرحلة قريباً — تصفّح باقي الكورسات الآن.',
@@ -109,7 +108,6 @@
       lecturersTitle: 'Our lecturers',
       lecturersHint: 'Every subject has a lecturer behind it — a graduated doctor with a strong record and real teaching experience. Read their profile before you enroll.',
       lecturersCta: 'See all lecturers & profiles',
-      lecturersNote: '17 lecturers · 23 medical courses',
       fPackages: 'Packages',
       viewCourse: 'View course',
       emptyStage: 'Courses for this stage are coming soon — browse the rest of the catalog.',
@@ -425,6 +423,7 @@
         state.stage = parseInt(btn.getAttribute('data-stage-id'), 10);
         renderStages();
         renderCourses();
+        renderPackages();
         toCourses();
       });
     });
@@ -530,7 +529,13 @@
     var t = COPY[state.lang];
     var ar = state.lang === 'ar';
 
-    var vals = storefrontPackages(h).filter(function (p) { return p.enabled !== false; }).map(function (p) {
+    var vals = storefrontPackages(h).filter(function (p) {
+      if (p.enabled === false) return false;
+      if (['anatomy-ul-ll', 'anatomy-ll-thorax', 'anatomy-complete'].indexOf(p.id) >= 0) {
+        return !state.stage || state.stage === 1;
+      }
+      return true;
+    }).map(function (p) {
       var m = h.pkgMath(p);
       return {
         raw: p, id: p.id,
@@ -600,6 +605,7 @@
       return (
         '<article class="hip-pkg-card compact">' +
           '<div class="hip-pkg-badges">' +
+            (v.raw.stage === 1 ? '<span class="hip-pkg-badge">' + esc(ar ? 'المرحلة الأولى' : 'First Stage') + '</span>' : '') +
             (v.purchasable
               ? '<span class="hip-pkg-off-pill"><span class="mono">' + esc(v.pctNum) + '</span> ' + esc(offWord) + '</span>'
               : '<span class="hip-pkg-display-tag">' + esc(t.displayOnly) + '</span>') +
@@ -673,6 +679,15 @@
     document.getElementById('stat-lecturers').textContent = String(Object.keys(h.LECTURERS).length);
   }
 
+  function renderLecturersNote() {
+    var h = H();
+    var lecturers = Object.keys(h.LECTURERS).length;
+    var courses = h.COURSES.filter(function (c) { return c.enabled !== false; }).length;
+    document.querySelector('[data-i18n="lecturersNote"]').textContent = state.lang === 'ar'
+      ? lecturers + ' محاضر · ' + courses + ' كورس طبي'
+      : lecturers + ' lecturers · ' + courses + ' medical courses';
+  }
+
   function applyLang() {
     var ar = state.lang === 'ar';
     root.setAttribute('dir', ar ? 'rtl' : 'ltr');
@@ -685,11 +700,12 @@
     renderPackages();
     renderLecturers();
     renderHeroStats();
+    renderLecturersNote();
   }
 
   btnAr.addEventListener('click', function () { state.lang = 'ar'; if (H()) H().setLang('ar'); applyLang(); });
   btnEn.addEventListener('click', function () { state.lang = 'en'; if (H()) H().setLang('en'); applyLang(); });
-  btnClear.addEventListener('click', function () { state.stage = 0; renderStages(); renderCourses(); });
+  btnClear.addEventListener('click', function () { state.stage = 0; renderStages(); renderCourses(); renderPackages(); });
 
   /* ── follow-us nav dropdown ── */
   (function () {

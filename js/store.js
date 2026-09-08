@@ -66,6 +66,7 @@
   }
 
   var LECTURERS = {
+    sajad: { en: 'Sajad Abdul Aziz Khalifa', ar: 'د. سجاد عبد العزيز خليفة', photo: 'assets/lecturers/sajad-abdul-aziz-khalifa.png' },
     hussein: { en: 'Hussein Kamal Shakir', ar: 'حسين كمال شاكر', photo: 'assets/lecturers/hussein.png' },
     asal: { en: 'Asal Ziad Noori', ar: 'عسل زياد نوري', photo: 'assets/lecturers/asal.png' },
     aya: { en: 'Aya Thamer Juma', ar: 'آية ثامر جمعة', photo: 'assets/lecturers/aya-thamer.png' },
@@ -95,6 +96,7 @@
   };
 
   var INC = {
+    anatomyIntro: { ar: 'يشمل Introduction to Anatomy', en: 'Includes Introduction to Anatomy' },
     theory: { ar: 'نظري', en: 'Theory' },
     practical: { ar: 'عملي', en: 'Practical' },
     summary: { ar: 'ملخص مشمول', en: 'Summary included' },
@@ -110,6 +112,9 @@
 
   // price = individual price in IQD · stage: null = not announced · enabled:false hides it
   var COURSES = [
+    { id: 'anatomy-upper', title: 'Upper Limb Anatomy', titleAr: 'تشريح الطرف العلوي', lect: 'sajad', stage: 1, stages: [1], price: 35000, tags: ['basic'], includes: ['anatomyIntro'] },
+    { id: 'anatomy-lower', title: 'Lower Limb Anatomy', titleAr: 'تشريح الطرف السفلي', lect: 'sajad', stage: 1, stages: [1], price: 30000, tags: ['basic'] },
+    { id: 'anatomy-thorax', title: 'Thorax Anatomy', titleAr: 'تشريح الصدر', lect: 'sajad', stage: 1, stages: [1], price: 25000, tags: ['basic'] },
     { id: 'community', title: 'Community Medicine', titleAr: 'طب المجتمع', lect: 'hussein', stage: 4, price: 20000, tags: ['medicine'] },
     { id: 'radio-theory', title: 'Radiology — Theory', titleAr: 'الأشعة — نظري', lect: 'asal', stage: null, price: 20000, tags: [], badge: 'theory' },
     { id: 'radio-prac', title: 'Radiology — Practical', titleAr: 'الأشعة — عملي', lect: 'asal', stage: null, price: 10000, tags: [], badge: 'practical' },
@@ -138,6 +143,27 @@
   // packages reference course ids · price is the package's own promo price
   // originalPrice optional — summed from referenced courses when omitted
   var PACKAGES = [
+    {
+      id: 'anatomy-ul-ll', enabled: true, stage: 1,
+      name: 'Upper Limb + Lower Limb', nameAr: 'الطرف العلوي + الطرف السفلي',
+      desc: 'First-year Anatomy with Sajad Abdul Aziz Khalifa.',
+      descAr: 'تشريح المرحلة الأولى مع د. سجاد عبد العزيز خليفة.',
+      courses: ['anatomy-upper', 'anatomy-lower'], price: 60000
+    },
+    {
+      id: 'anatomy-ll-thorax', enabled: true, stage: 1,
+      name: 'Lower Limb + Thorax', nameAr: 'الطرف السفلي + الصدر',
+      desc: 'First-year Anatomy with Sajad Abdul Aziz Khalifa.',
+      descAr: 'تشريح المرحلة الأولى مع د. سجاد عبد العزيز خليفة.',
+      courses: ['anatomy-lower', 'anatomy-thorax'], price: 50000
+    },
+    {
+      id: 'anatomy-complete', enabled: true, stage: 1,
+      name: 'Upper Limb + Lower Limb + Thorax', nameAr: 'بكج التشريح الكامل',
+      desc: 'Complete first-year Anatomy with Sajad Abdul Aziz Khalifa.',
+      descAr: 'تشريح المرحلة الأولى كاملاً مع د. سجاد عبد العزيز خليفة.',
+      courses: ['anatomy-upper', 'anatomy-lower', 'anatomy-thorax'], price: 80000
+    },
     {
       id: 'year3', featured: true, bestValue: false, enabled: true, stage: 3,
       name: 'Third Year Package', nameAr: 'بكج المرحلة الثالثة',

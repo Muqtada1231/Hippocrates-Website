@@ -73,7 +73,7 @@ const NESTED_BUNDLE_NAMES: Record<string, string> = {
 /* بكجات يملك نظام الحسابات توزيعها على مستوى البكج (Package Lecturer).
    مكوّناتها تُرسل للتعريف بالمحتوى فقط — بلا أي حقل مبلغ إطلاقاً، ولا صفر:
    الحقل يُحذف كلياً حتى ما ندهس توزيع الشيت. */
-const CONTENT_ONLY_PACKAGES = new Set(['radiology']);
+const CONTENT_ONLY_PACKAGES = new Set(['radiology', 'anatomy-ul-ll', 'anatomy-ll-thorax', 'anatomy-complete']);
 
 type Json = Record<string, unknown>;
 
