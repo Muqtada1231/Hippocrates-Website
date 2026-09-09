@@ -2,6 +2,7 @@
   'use strict';
 
   var FACULTY = [
+    { photo: 'assets/lecturers/sajad-abdul-aziz-khalifa.png', name: 'د. سجاد عبد العزيز خليفة', nameEn: 'Sajad Abdul Aziz Khalifa', subject: 'Anatomy · First Year', gpa: '78.38' },
     { photo: 'assets/lecturers/muqtada.png', name: 'د. مقتدى علي', nameEn: 'Dr. Muqtada Ali', subject: 'Medicine · Cardiology', gpa: '81.37', founder: true },
     { photo: 'assets/lecturers/ayat.png', name: 'د. ايات غالب', nameEn: 'Dr. Ayat Ghalib', subject: 'Physiology', gpa: '80.99' },
     { photo: 'assets/lecturers/karrar.png', name: 'د. كرار حيدر', nameEn: 'Dr. Karrar Haider', subject: 'Biochemistry · Immunology', gpa: '72.9' },
@@ -47,7 +48,7 @@
       lecturersTitle: 'المحاضرون',
       lecturersHint: 'كل مادة عندها محاضر مسؤول عنها — طبيب متخرّج بمعدل متميز وله خبرة فعلية بالشرح والتلخيص. شوف ملفه التعريفي قبل ما تسجّل.',
       lecturersCta: 'شوف كل المحاضرين وملفاتهم',
-      lecturersNote: '16 محاضر · 23 كورس طبي',
+      lecturersNote: '17 محاضر · 23 كورس طبي',
       fPackages: 'الباقات',
       viewCourse: 'شوف الكورس',
       emptyStage: 'كورسات هذه المرحلة قريباً — تصفّح باقي الكورسات الآن.',
@@ -108,7 +109,7 @@
       lecturersTitle: 'Our lecturers',
       lecturersHint: 'Every subject has a lecturer behind it — a graduated doctor with a strong record and real teaching experience. Read their profile before you enroll.',
       lecturersCta: 'See all lecturers & profiles',
-      lecturersNote: '16 lecturers · 23 medical courses',
+      lecturersNote: '17 lecturers · 23 medical courses',
       fPackages: 'Packages',
       viewCourse: 'View course',
       emptyStage: 'Courses for this stage are coming soon — browse the rest of the catalog.',
