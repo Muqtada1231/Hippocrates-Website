@@ -8,7 +8,7 @@
 ## 1. Project overview
 
 - **Hippocrates** is an Iraqi medical education platform.
-- Production domain (owner-provided; **requires live verification**): <https://hippocrates.medgptx.com/>. Current HTML canonical/Open Graph metadata and visible brand URL still reference `https://med-hip.com` / `med-hip.com`.
+- Production entry domain: <https://hippocrates.medgptx.com/>; verified on 2026-09-09 to redirect to <https://med-hip.com/>. HTML canonical/Open Graph metadata and visible brand URL use `med-hip.com`.
 - Local project is normally `~/Desktop/Hippocrates Website`.
 - Plain multi-page HTML/CSS/JavaScript; no package manager, bundler, or framework is present.
 - Main technologies: browser JavaScript, Supabase REST/RPC/Auth/Edge Functions, Google Apps Script, Google Sheets Finance, and Cloudflare static assets.
@@ -161,7 +161,7 @@ Owner-confirmed live on 2026-09-09:
 
 ## 12. Current Anatomy frontend status
 
-- A historical deployment had `TypeError: Cannot read properties of undefined (reading 'ar')` because `js/app.js` referenced `anatomyIntro` while deployed `js/store.js` lacked it. Deployment status **requires live verification**.
+- A historical deployment had `TypeError: Cannot read properties of undefined (reading 'ar')` because `js/app.js` referenced `anatomyIntro` while deployed `js/store.js` lacked it. The fixed release was verified live on 2026-09-09.
 - **This is not an active repository bug:** current `js/store.js` defines `INC.anatomyIntro` in Arabic and English. Do not re-add or hack around it.
 - `renderHeroStats()` dynamically calculates enabled course count, lecturer count, and six stages. Expected successful counts with Anatomy: Courses 26, Lecturers 17, Stages 6; never hardcode 26 or 17.
 - The lecturer-section caption and hero counters are dynamically derived from the catalog; do not hardcode 17/26.
@@ -170,7 +170,7 @@ Owner-confirmed live on 2026-09-09:
 
 Before exposing a new finance-sensitive product, verify: (1) its revenue rule, (2) whole-IQD settlement, (3) Lecturer Earnings, (4) mixed-rule Monthly Summary, (5) reconciliation, and (6) catalog mapping.
 
-For Anatomy, the finance gate was owner-confirmed ready on 2026-09-09. A read-only catalog check also confirmed all six live Supabase products enabled/purchasable with exact Stage 1 IDs/prices. The checked-in fallback matches.
+For Anatomy, the finance gate was owner-confirmed ready on 2026-09-09. A read-only catalog check confirmed all six live Supabase products enabled/purchasable with exact Stage 1 IDs/prices. The website release was then verified live: six cards/prices, Stage 1/Stage 5 filtering, six-item cart, promo validation, Sajad profile/portrait, existing products, and dynamic 17/26/6 counters all passed.
 
 ## 14. Existing product exceptions
 
